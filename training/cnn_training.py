@@ -180,11 +180,11 @@ def train_model(model=None):
     start = timer()
 
     
-    checkpoint_path = "trianing/emnist_model.weights.h5"
+    checkpoint_path = "training/emnist_model.weights.h5"
     cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                             save_weights_only=True,
                                             verbose=1,
-                                            save_freq=5)
+                                            save_freq=1)
 
     early_stopping = callbacks.EarlyStopping(monitor='val_accuracy',
                                             patience=10)
