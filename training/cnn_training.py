@@ -24,6 +24,9 @@ path = kagglehub.dataset_download('crawford/emnist')
 print("Path to the downloaded dataset: ", path)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
+print("Project root: ", project_root)
+print("System root: ", sys.path)
+os.chdir(project_root)
 
 #
 # EMNIST Data Loader Class
@@ -158,36 +161,38 @@ model.add(layers.Dense(62, activation='softmax'))
 # Show composition of model
 # model.summary()
 
-def train_model():
-    if not os.path.exists('emnist_model.keras'):
+def train_model(model=None):
+    if not os.path.exists('training/emnist_model.keras'):
         print("Creating new model")
         model.compile(optimizer='adam',
                     loss='sparse_categorical_crossentropy',
                     metrics=['accuracy'])
-
     else:
         print("Loading from existing")
-        model = models.load_model('emnist_model.keras')
+        model = models.load_model('training/emnist_model.keras')
     
     start = timer()
+
+    
     checkpoint_path = "cnn_training_1/weight.weights.h5"
     cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                             save_weights_only=True,
-                                            verbose=1)
+                                            verbose=1,
+                                            save_freq=5)
 
     early_stopping = callbacks.EarlyStopping(monitor='val_accuracy',
                                             patience=10)
     history = model.fit(x_train, y_train,
                         epochs=5,
                         validation_data=(x_test, y_test),
-                        callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=15)],
+                        callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=2)],
                         verbose=1)
 
     
     print("Total Time consumed for 5 epochs -->", timer()-start)
     
 
-    model.save('emnist_model.keras')
+    model.save('training/emnist_model.keras')
 
-train_model()
+train_model(model)
 
