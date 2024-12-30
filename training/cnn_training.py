@@ -180,7 +180,7 @@ def train_model(model=None):
     start = timer()
 
     
-    checkpoint_path = "cnn_training_1/weight.weights.h5"
+    checkpoint_path = "trianing/emnist_model.weights.h5"
     cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                             save_weights_only=True,
                                             verbose=1,
@@ -191,7 +191,7 @@ def train_model(model=None):
     history = model.fit(x_train, y_train,
                         epochs=5,
                         validation_data=(x_test, y_test),
-                        callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=2)],
+                        callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=10)],
                         verbose=1)
 
     
