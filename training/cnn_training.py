@@ -1,3 +1,9 @@
+print("Create env environment before proceeding in the trianing process.\n"
+      "Run the following command in the terminal: python3 -m venv env\n"
+      "Activate the environment by running: source env/bin/activate\n"
+
+        "Install the required packages by running: pip install -r requirements.txt\n")
+
 import kagglehub
 
 import os
