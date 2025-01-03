@@ -7,6 +7,7 @@ print("Create env environment before proceeding in the training process.\n"
 import kagglehub # Uploading from kagglehub the EMNIST dataset from crawford
 
 import os # os and sys to chdir to the project working directory
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # Force CPU usage instead of CUDA gpu
 import sys
 
 import numpy as np # method to output images
@@ -17,6 +18,7 @@ import random
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
+import keras
 from keras import layers, models, callbacks
 from timeit import default_timer as timer
 
@@ -136,7 +138,7 @@ def sample_emnist():
 
 ### LeNet with Keras and TensorFlow ###
 # Training module
-def train_model(model=None, epoch=100, sleep=30):
+def train_model(model=None, rounds=10, epoch=10, sleep=30):
     if not os.path.exists('training/emnist_model.keras'):
         print("Creating new model")
     else:
@@ -157,16 +159,20 @@ def train_model(model=None, epoch=100, sleep=30):
 
     early_stopping = callbacks.EarlyStopping(monitor='val_accuracy',
                                             patience=10)
-    history = model.fit(x_train, y_train,
-                        epochs=epoch, # 100 epochs is 1 hour with RTX 4080
-                        validation_data=(x_test, y_test),
-                        callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=sleep)],
-                        verbose=1)
-    
+    for round in range(rounds):
+        history = model.fit(x_train, y_train,
+                            epochs=epoch, # 100 epochs is 1 hour with RTX 4080
+                            validation_data=(x_test, y_test),
+                            callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=sleep)],
+                            verbose=1)
+        
+        model.save(f'training/emnist_model_{round}.keras') # Save between each round of epoch ()
+        keras.backend.clear_session()
+     
 
     print(f"Total Time consumed for {epoch} epochs -->", timer()-start)
 
-    model.save('training/emnist_model.keras')
+    model.save('training/emnist_model.keras') # Final save after all operations
 
 # Testing module
 def test_model(model=None, start_index=0, size=100):
@@ -176,12 +182,12 @@ def test_model(model=None, start_index=0, size=100):
         print("Evaluating accuracy of training model")
         model = models.load_model('training/emnist_model.keras')
 
-    x_rand_test = x_test[0:20]
-    y_rand_test = y_test[0:20]
+    x_rand_test = x_test[start_index:start_index + size]
+    y_rand_test = y_test[start_index:start_index + size]
     print(x_rand_test)
     print(y_rand_test)
     
-    result = model.predict(x_rand_test, 20, 1, )
+    result = model.predict(x_rand_test, size, 1, )
     result = [np.argmax(ix) for ix in result]
 
     print(result)
@@ -221,6 +227,7 @@ while (True):
     user_input = input("(T) or (E):")
 
     if user_input.upper() == 'T':
+        round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
         epoch = int(input("Epochs (50 epochs = ~30min): "))
         sleep = int(input("Sleep Time Between Epochs(sec): "))
         train_model(model, epoch, sleep)
