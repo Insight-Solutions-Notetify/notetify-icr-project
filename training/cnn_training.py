@@ -164,7 +164,7 @@ def train_model(model=None, epoch=100, sleep=30):
                         verbose=1)
     
 
-    print("Total Time consumed for 5 epochs -->", timer()-start)
+    print(f"Total Time consumed for {epoch} epochs -->", timer()-start)
 
     model.save('training/emnist_model.keras')
 
