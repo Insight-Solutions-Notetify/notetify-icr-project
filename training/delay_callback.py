@@ -7,5 +7,5 @@ class EpochDelayCallback(keras.callbacks.Callback):
         self.delay_seconds = delay_seconds
 
     def on_epoch_end(self, epoch, logs=None):
-        print(f"Sleeping for {self.seconds} seconds")
+        print(f"Sleeping for {self.delay_seconds} seconds")
         time.sleep(self.delay_seconds)
