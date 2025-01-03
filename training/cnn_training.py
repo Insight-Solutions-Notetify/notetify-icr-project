@@ -138,13 +138,18 @@ def sample_emnist():
 
 ### LeNet with Keras and TensorFlow ###
 # Training module
-def train_model(model=None, rounds=10, epoch=10, sleep=30):
+def train_model(model=None, rounds=10, epoch=10, sleep=30, weights = False):
     if not os.path.exists('training/emnist_model.keras'):
         print("Creating new model")
     else:
         print("Loading from existing")
         model = models.load_model('training/emnist_model.keras')
-        # model.load_weights('training/emnist_model.weights.h5')
+        if weights:
+            try:
+                model.load_weights("training/emnist_model.weights.h5")
+            except ValueError:
+                print("Failed to load existing weights")
+            # model.load_weights('training/emnist_model.weights.h5')
     
     start = timer()
 
@@ -217,6 +222,7 @@ model.add(layers.Dense(256, activation='relu'))
 model.add(layers.Dense(84, activation='relu'))
 model.add(layers.Dense(62, activation='softmax'))
 
+model.load_weights
 # model.build()
 # Show composition of model
 # model.summary()
@@ -230,7 +236,12 @@ while (True):
         round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
         epoch = int(input("Epochs (50 epochs = ~30min): "))
         sleep = int(input("Sleep Time Between Epochs(sec): "))
-        train_model(model, epoch, sleep)
+        weights = input("Use existing weights? T or F:")
+        if weights.upper() == "T": 
+            weights = True
+        else: 
+            weights = False
+        train_model(model, round, epoch, sleep, weights)
         break
     elif user_input.upper() == 'E':
         start_index = int(input("Starting index of test_images:"))
