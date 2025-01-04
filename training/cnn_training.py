@@ -164,16 +164,25 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model = None
     checkpoint_path = "training/emnist_model.weights.h5"
     cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                             save_weights_only=True,
+                                            save_best_only=True,
                                             verbose=1)
 
     early_stopping = callbacks.EarlyStopping(monitor='val_accuracy',
-                                            patience=10)
+                                            patience=10,
+                                            verbose=1)
     for round in range(rounds):
         history = model.fit(x_train, y_train,
                             epochs=epoch, # 100 epochs is 1 hour with RTX 4080
                             validation_data=(x_test, y_test),
+                            batch_size=16,
                             callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=sleep)],
                             verbose=1)
+        
+
+        print(f"Completed round {round}. Results: ")
+        print(history.history)
+        evaluation = model.evaluate(x_test, y_test)
+        print("test loss, test acc:", evaluation)
         
         model.save(f'training/emnist_model_{round}.keras') # Save between each round of epoch ()
         # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
@@ -226,7 +235,6 @@ model.add(layers.Dense(256, activation='relu'))
 model.add(layers.Dense(84, activation='relu'))
 model.add(layers.Dense(62, activation='softmax'))
 
-model.load_weights
 # model.build()
 # Show composition of model
 # model.summary()
