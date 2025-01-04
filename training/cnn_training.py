@@ -11,7 +11,6 @@ import os # os and sys to chdir to the project working directory
 import sys
 
 import numpy as np # method to output images
-import pandas as pd
 import struct
 from array import array
 
