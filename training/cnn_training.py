@@ -96,6 +96,10 @@ training_labels_filepath = f"{path}{source_files}{train_label}"
 test_images_filepath = f"{path}{source_files}{test_image}"
 test_labels_filepath = f"{path}{source_files}{test_label}"
 
+character_by_index = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+                      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
+                      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+
 #
 # Helper function to show a list of images with their relating titles
 #
@@ -125,12 +129,12 @@ def sample_emnist():
     for i in range(0, 9):
         r = random.randint(1, 60000)
         images_2_show.append(x_train[r])
-        titles_2_show.append('training image [' + str(r) + '] = ' + str(y_train[r]))    
+        titles_2_show.append('training image [' + str(r) + '] = ' + character_by_index[y_train[r]])    
 
     for i in range(0, 3):
         r = random.randint(1, 10000)
         images_2_show.append(x_test[r])        
-        titles_2_show.append('test image [' + str(r) + '] = ' + str(y_test[r]))    
+        titles_2_show.append('test image [' + str(r) + '] = ' + character_by_index[y_test[r]])    
 
     show_images(images_2_show, titles_2_show)
     ''
@@ -138,7 +142,7 @@ def sample_emnist():
 
 ### LeNet with Keras and TensorFlow ###
 # Training module
-def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model = None, filename_weights = None):
+def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, filename_weights=None):
     if filename_model:
         if os.path.exists(f'training/{filename_model}'):
             print("Loading from existing")
@@ -193,12 +197,12 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model = None
     model.save('training/emnist_model.keras') # Final save after all operations
 
 # Testing module
-def test_model(model=None, start_index=0, size=100):
-    if not os.path.exists('training/emnist_model.keras'):
+def test_model(model=None, start_index=0, size=100, filename_model=None):
+    if not os.path.exists(f'training/{filename_model}'):
         print("Can't evaluate without saved model")
     else:
         print("Evaluating accuracy of training model")
-        model = models.load_model('training/emnist_model.keras')
+        model = models.load_model(f'training/{filename_model}')
 
     x_rand_test = x_test[start_index:start_index + size]
     y_rand_test = y_test[start_index:start_index + size]
@@ -215,7 +219,7 @@ def test_model(model=None, start_index=0, size=100):
 
 emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
 (x_train, y_train), (x_test, y_test) = emnist_dataloader.load_data()
-# sample_emnist()
+sample_emnist()
 
 # Check for GPU available
 available_GPU = "Num GPUs Available: ", len(tf.config.list_physical_devices('GPU'))
@@ -256,7 +260,8 @@ while (True):
     elif user_input.upper() == 'E':
         start_index = int(input("Starting index of test_images:"))
         size = int(input("Size of input batch:"))
-        test_model(model, start_index, size)
+        filename_model = input("Model Filename: ")
+        test_model(model, start_index, size, filename_model)
         break
     else:
         print("Invalid input try another")
