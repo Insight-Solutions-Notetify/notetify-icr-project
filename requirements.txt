@@ -3,3 +3,4 @@ numpy==2.0.2
 matplotlib==3.10.0
 tensorflow[and-cuda]==2.18.0
 opencv-python==4.10.0.84
+PyQt6==6.8.0
