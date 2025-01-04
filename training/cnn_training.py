@@ -138,21 +138,25 @@ def sample_emnist():
 
 ### LeNet with Keras and TensorFlow ###
 # Training module
-def train_model(model=None, rounds=10, epoch=10, sleep=30, weights = False):
-    if not os.path.exists('training/emnist_model.keras'):
-        print("Creating new model")
-    else:
-        print("Loading from existing")
-        model = models.load_model('training/emnist_model.keras')
-        if weights:
+def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model = None, filename_weights = None):
+    if filename_model:
+        if os.path.exists(f'training/{filename_model}'):
+            print("Loading from existing")
+            model = models.load_model(f'training/{filename_model}')
+        if filename_weights:
             try:
-                model.load_weights("training/emnist_model.weights.h5")
+                model.load_weights(f"training/{filename_weights}")
             except ValueError:
                 print("Failed to load existing weights")
-            # model.load_weights('training/emnist_model.weights.h5')
+            # model.load_weights('training/model_weights.h5')
+        else:
+            print("No weights file provided")
+    else:
+        print("Creating new model")
     
     start = timer()
 
+    # Check if recompiling on each session is neccessary or loss in performance
     model.compile(optimizer='adam',
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy']) # Check what other metrics can be analayzed
@@ -172,7 +176,7 @@ def train_model(model=None, rounds=10, epoch=10, sleep=30, weights = False):
                             verbose=1)
         
         model.save(f'training/emnist_model_{round}.keras') # Save between each round of epoch ()
-        keras.backend.clear_session()
+        # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
      
 
     print(f"Total Time consumed for {epoch} epochs -->", timer()-start)
@@ -234,14 +238,12 @@ while (True):
 
     if user_input.upper() == 'T':
         round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
-        epoch = int(input("Epochs (50 epochs = ~30min): "))
+        # epoch = int(input("Epochs (50 epochs = ~30min): "))
+        epoch = 60 # This should be decided rather than inputted by user since the number can affect performance (underfitting if too little or overfitting if too high)
         sleep = int(input("Sleep Time Between Epochs(sec): "))
-        weights = input("Use existing weights? T or F:")
-        if weights.upper() == "T": 
-            weights = True
-        else: 
-            weights = False
-        train_model(model, round, epoch, sleep, weights)
+        filename_model = input("Model Filename (Create new if empty): ")
+        filename_weights = input("Weights Filename (Empty if none): ")
+        train_model(model, round, epoch, sleep, filename_model, filename_weights)
         break
     elif user_input.upper() == 'E':
         start_index = int(input("Starting index of test_images:"))
