@@ -7,6 +7,7 @@ print("Create env environment before proceeding in the training process.\n"
 import kagglehub # Uploading from kagglehub the EMNIST dataset from crawford
 
 import os # os and sys to chdir to the project working directory
+# os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # Force CPU usage instead of CUDA gpu
 import sys
 
 import numpy as np # method to output images
@@ -17,8 +18,10 @@ import random
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
-from keras import layers, models, callbacks
+
+from keras import layers, models, callbacks, optimizers
 from timeit import default_timer as timer
+
 
 from delay_callback import EpochDelayCallback
 
@@ -33,6 +36,8 @@ os.chdir(project_root)
 # print("Project root: ", project_root)
 # print("System root: ", sys.path)
 
+
+# Replaced for pandas read csv
 #
 # EMNIST Data Loader Class
 #
@@ -94,6 +99,10 @@ training_labels_filepath = f"{path}{source_files}{train_label}"
 test_images_filepath = f"{path}{source_files}{test_image}"
 test_labels_filepath = f"{path}{source_files}{test_label}"
 
+character_by_index = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+                      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+                      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+
 #
 # Helper function to show a list of images with their relating titles
 #
@@ -123,12 +132,12 @@ def sample_emnist():
     for i in range(0, 9):
         r = random.randint(1, 60000)
         images_2_show.append(x_train[r])
-        titles_2_show.append('training image [' + str(r) + '] = ' + str(y_train[r]))    
+        titles_2_show.append('training image [' + str(r) + '] = ' + character_by_index[y_train[r]])    
 
     for i in range(0, 3):
         r = random.randint(1, 10000)
         images_2_show.append(x_test[r])        
-        titles_2_show.append('test image [' + str(r) + '] = ' + str(y_test[r]))    
+        titles_2_show.append('test image [' + str(r) + '] = ' + character_by_index[y_test[r]])    
 
     show_images(images_2_show, titles_2_show)
     ''
@@ -136,52 +145,79 @@ def sample_emnist():
 
 ### LeNet with Keras and TensorFlow ###
 # Training module
-def train_model(model=None, epoch=100, sleep=30):
-    if not os.path.exists('training/emnist_model.keras'):
-        print("Creating new model")
+def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, filename_weights=None):
+    if filename_model:
+        if os.path.exists(f'training/{filename_model}'):
+            print("Loading from existing")
+            model = models.load_model(f'training/{filename_model}')
+        if filename_weights:
+            try:
+                model.load_weights(f"training/{filename_weights}")
+            except ValueError:
+                print("Failed to load existing weights")
+            # model.load_weights('training/model_weights.h5')
+        else:
+            print("No weights file provided")
     else:
-        print("Loading from existing")
-        model = models.load_model('training/emnist_model.keras')
-        # model.load_weights('training/emnist_model.weights.h5')
+        print("Creating new model")
     
     start = timer()
 
-    model.compile(optimizer='adam',
+    # Check if recompiling on each session is neccessary or loss in performance
+    adam = optimizers.Adam(learning_rate=5e-4)
+    model.compile(optimizer=adam,
                   loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy']) # Check what other metrics can be analayzed
+                  metrics=['accuracy']) # Check what other metrics can be analyzed
     
     checkpoint_path = "training/emnist_model.weights.h5"
     cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                             save_weights_only=True,
+                                            save_best_only=True,
                                             verbose=1)
 
-    early_stopping = callbacks.EarlyStopping(monitor='val_accuracy',
-                                            patience=10)
-    history = model.fit(x_train, y_train,
-                        epochs=epoch, # 100 epochs is 1 hour with RTX 4080
-                        validation_data=(x_test, y_test),
-                        callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=sleep)],
-                        verbose=1)
+    early_stopping = callbacks.EarlyStopping(monitor='val_loss',
+                                            patience=10,
+                                            verbose=1)
     
+    # Learning rate annealer
+    reduce_lr = callbacks.ReduceLROnPlateau(monitor='val_acc', patience=3, verbose=1, factor=0.2, min_lr=1e-6)
+
+    for round in range(rounds):
+        history = model.fit(x_train, y_train,
+                            epochs=epoch, # 100 epochs is 1 hour with RTX 4080
+                            validation_data=(x_test, y_test),
+                            batch_size=16,
+                            callbacks=[early_stopping, cp_callback, reduce_lr, EpochDelayCallback(delay_seconds=sleep)],
+                            verbose=1)
+        
+
+        print(f"Completed round {round}. Results: ")
+        print(history.history)
+        evaluation = model.evaluate(x_test, y_test)
+        print("test loss, test acc:", evaluation)
+        
+        model.save(f'training/emnist_model_{round}.keras') # Save between each round of epoch ()
+        # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
+     
 
     print(f"Total Time consumed for {epoch} epochs -->", timer()-start)
 
-    model.save('training/emnist_model.keras')
+    model.save('training/emnist_model.keras') # Final save after all operations
 
 # Testing module
-def test_model(model=None, start_index=0, size=100):
-    if not os.path.exists('training/emnist_model.keras'):
+def test_model(model=None, start_index=0, size=100, filename_model=None):
+    if not os.path.exists(f'training/{filename_model}'):
         print("Can't evaluate without saved model")
     else:
         print("Evaluating accuracy of training model")
-        model = models.load_model('training/emnist_model.keras')
+        model = models.load_model(f'training/{filename_model}')
 
-    x_rand_test = x_test[0:20]
-    y_rand_test = y_test[0:20]
+    x_rand_test = x_test[start_index:start_index + size]
+    y_rand_test = y_test[start_index:start_index + size]
     print(x_rand_test)
     print(y_rand_test)
     
-    result = model.predict(x_rand_test, 20, 1, )
+    result = model.predict(x_rand_test, size, 1, )
     result = [np.argmax(ix) for ix in result]
 
     print(result)
@@ -217,18 +253,39 @@ model.add(layers.Dense(62, activation='softmax'))
 
 # Main Loop
 while (True):
-    print("Train or evaluate?")
-    user_input = input("(T) or (E):")
+    print("(T)rain, (E)valuate, (S)ample EMNIST or (Q)uit?")
+    user_input = input("Command: ")
 
     if user_input.upper() == 'T':
-        epoch = int(input("Epochs (50 epochs = ~30min): "))
-        sleep = int(input("Sleep Time Between Epochs(sec): "))
-        train_model(model, epoch, sleep)
-        break
+        default = input("(D)efault or (C)ustom?: ")
+        if default.upper() == 'D':
+            round = 1
+            epoch = 60
+            sleep = 30
+            filename_model = 'emnist_model.keras'
+            filenmae_weights = 'emnist_model.weights.h5'
+            train_model(model, round, epoch, sleep, filename_model, filenmae_weights)
+            break
+        elif default.upper() == 'C':
+            round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
+            # epoch = int(input("Epochs (50 epochs = ~30min): "))
+            epoch = 60 # This should be decided rather than inputted by user since the number can affect performance (underfitting if too little or overfitting if too high)
+            sleep = int(input("Sleep Time Between Epochs(sec): "))
+            filename_model = input("Model Filename (Create new if empty): ")
+            filename_weights = input("Weights Filename (Empty if none): ")
+            train_model(model, round, epoch, sleep, filename_model, filename_weights)
+            break
+        else:
+            print("Invalid train input")
     elif user_input.upper() == 'E':
         start_index = int(input("Starting index of test_images:"))
         size = int(input("Size of input batch:"))
-        test_model(model, start_index, size)
+        filename_model = input("Model Filename: ")
+        test_model(model, start_index, size, filename_model)
+        break
+    elif user_input.upper() == 'S':
+        sample_emnist()
+    elif user_input.upper() == 'Q':
         break
     else:
         print("Invalid input try another")
