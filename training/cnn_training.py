@@ -97,8 +97,8 @@ test_images_filepath = f"{path}{source_files}{test_image}"
 test_labels_filepath = f"{path}{source_files}{test_label}"
 
 character_by_index = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
-                      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'
-                      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+                      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+                      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
 
 #
 # Helper function to show a list of images with their relating titles
@@ -219,7 +219,7 @@ def test_model(model=None, start_index=0, size=100, filename_model=None):
 
 emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
 (x_train, y_train), (x_test, y_test) = emnist_dataloader.load_data()
-sample_emnist()
+# sample_emnist()
 
 # Check for GPU available
 available_GPU = "Num GPUs Available: ", len(tf.config.list_physical_devices('GPU'))
@@ -245,8 +245,8 @@ model.add(layers.Dense(62, activation='softmax'))
 
 # Main Loop
 while (True):
-    print("Train or evaluate?")
-    user_input = input("(T) or (E):")
+    print("(T)rain, (E)valuate, (S)ample EMNIST or (Q)uit?")
+    user_input = input("Command: ")
 
     if user_input.upper() == 'T':
         round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
@@ -262,6 +262,10 @@ while (True):
         size = int(input("Size of input batch:"))
         filename_model = input("Model Filename: ")
         test_model(model, start_index, size, filename_model)
+        break
+    elif user_input.upper() == 'S':
+        sample_emnist()
+    elif user_input.upper() == 'Q':
         break
     else:
         print("Invalid input try another")
