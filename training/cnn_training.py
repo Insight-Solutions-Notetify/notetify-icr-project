@@ -11,6 +11,7 @@ import os # os and sys to chdir to the project working directory
 import sys
 
 import numpy as np # method to output images
+import pandas as pd
 import struct
 from array import array
 
@@ -18,9 +19,10 @@ import random
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
-import keras
-from keras import layers, models, callbacks
+
+from keras import layers, models, callbacks, optimizers
 from timeit import default_timer as timer
+
 
 from delay_callback import EpochDelayCallback
 
@@ -35,6 +37,8 @@ os.chdir(project_root)
 # print("Project root: ", project_root)
 # print("System root: ", sys.path)
 
+
+# Replaced for pandas read csv
 #
 # EMNIST Data Loader Class
 #
@@ -161,9 +165,10 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
     start = timer()
 
     # Check if recompiling on each session is neccessary or loss in performance
-    model.compile(optimizer='adam',
+    adam = optimizers.Adam(learning_rate=5e-4)
+    model.compile(optimizer=adam,
                   loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy']) # Check what other metrics can be analayzed
+                  metrics=['accuracy']) # Check what other metrics can be analyzed
     
     checkpoint_path = "training/emnist_model.weights.h5"
     cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -171,15 +176,19 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
                                             save_best_only=True,
                                             verbose=1)
 
-    early_stopping = callbacks.EarlyStopping(monitor='val_accuracy',
+    early_stopping = callbacks.EarlyStopping(monitor='val_loss',
                                             patience=10,
                                             verbose=1)
+    
+    # Learning rate annealer
+    reduce_lr = callbacks.ReduceLROnPlateau(monitor='val_acc', patience=3, verbose=1, factor=0.2, min_lr=1e-6)
+
     for round in range(rounds):
         history = model.fit(x_train, y_train,
                             epochs=epoch, # 100 epochs is 1 hour with RTX 4080
                             validation_data=(x_test, y_test),
                             batch_size=16,
-                            callbacks=[early_stopping, cp_callback, EpochDelayCallback(delay_seconds=sleep)],
+                            callbacks=[early_stopping, cp_callback, reduce_lr, EpochDelayCallback(delay_seconds=sleep)],
                             verbose=1)
         
 
@@ -249,14 +258,26 @@ while (True):
     user_input = input("Command: ")
 
     if user_input.upper() == 'T':
-        round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
-        # epoch = int(input("Epochs (50 epochs = ~30min): "))
-        epoch = 60 # This should be decided rather than inputted by user since the number can affect performance (underfitting if too little or overfitting if too high)
-        sleep = int(input("Sleep Time Between Epochs(sec): "))
-        filename_model = input("Model Filename (Create new if empty): ")
-        filename_weights = input("Weights Filename (Empty if none): ")
-        train_model(model, round, epoch, sleep, filename_model, filename_weights)
-        break
+        default = input("(D)efault or (C)ustom?: ")
+        if default.upper() == 'D':
+            round = 1
+            epoch = 60
+            sleep = 30
+            filename_model = 'emnist_model.keras'
+            filenmae_weights = 'emnist_model.weights.h5'
+            train_model(model, round, epoch, sleep, filename_model, filenmae_weights)
+            break
+        elif default.upper() == 'C':
+            round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
+            # epoch = int(input("Epochs (50 epochs = ~30min): "))
+            epoch = 60 # This should be decided rather than inputted by user since the number can affect performance (underfitting if too little or overfitting if too high)
+            sleep = int(input("Sleep Time Between Epochs(sec): "))
+            filename_model = input("Model Filename (Create new if empty): ")
+            filename_weights = input("Weights Filename (Empty if none): ")
+            train_model(model, round, epoch, sleep, filename_model, filename_weights)
+            break
+        else:
+            print("Invalid train input")
     elif user_input.upper() == 'E':
         start_index = int(input("Starting index of test_images:"))
         size = int(input("Size of input batch:"))
