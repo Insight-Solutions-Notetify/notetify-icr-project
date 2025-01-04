@@ -1,8 +1,7 @@
-print("Create env environment before proceeding in the training process.\n"
-      "Run the following command in the terminal: python3 -m venv env\n"
-      "Activate the environment by running: source env/bin/activate\n"
-
-        "Install the required packages by running: pip install -r requirements.txt\n")
+#"Create env environment before proceeding in the training process.\n"
+#"Run the following command in the terminal: python3 -m venv env\n"
+#"Activate the environment by running: source env/bin/activate\n"
+#"Install the required packages by running: pip install -r requirements.txt\n"
 
 import kagglehub # Uploading from kagglehub the EMNIST dataset from crawford
 
@@ -27,9 +26,9 @@ from delay_callback import EpochDelayCallback
 
 # Download the dataset from Kaggle
 path = kagglehub.dataset_download('crawford/emnist')
+# print("Path to the downloaded dataset: ", path)
 
 # Set working directory to current folder
-print("Path to the downloaded dataset: ", path)
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, project_root)
 os.chdir(project_root)
@@ -140,7 +139,6 @@ def sample_emnist():
         titles_2_show.append('test image [' + str(r) + '] = ' + character_by_index[y_test[r]])    
 
     show_images(images_2_show, titles_2_show)
-    ''
 
 
 ### LeNet with Keras and TensorFlow ###
