@@ -203,25 +203,38 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
     model.save('training/emnist_model.keras') # Final save after all operations
 
 # Testing module
-def test_model(model=None, start_index=0, size=100, filename_model=None):
+def test_model(model=None, start_index=0, size=0, filename_model=None, filename_weights=None):
     if not os.path.exists(f'training/{filename_model}'):
         print("Can't evaluate without saved model")
     else:
         print("Evaluating accuracy of training model")
         model = models.load_model(f'training/{filename_model}')
+        if filename_weights:
+            try:
+                model.load_weights(f"training/{filename_weights}")
+            except ValueError:
+                print("Failed to load existing weights")
+            # model.load_weights('training/model_weights.h5')
 
-    x_rand_test = x_test[start_index:start_index + size]
-    y_rand_test = y_test[start_index:start_index + size]
-    print(x_rand_test)
-    print(y_rand_test)
+    if size == 0:
+        model.evaluate(x_test, y_test) # Evaluate the model on the test data
+    else:
     
-    result = model.predict(x_rand_test, size, 1, )
-    result = [np.argmax(ix) for ix in result]
+        x_rand_test = x_test[start_index:start_index + size]
+        y_rand_test = y_test[start_index:start_index + size]
+        print(y_rand_test)
+        
+        result = model.predict(x_rand_test, batch_size=32)
+        result = [int(np.argmax(ix) for ix in result)]
 
-    print(result)
+        print(result)
 
-    # Overall accuracy on test images
-    model.evaluate(x_test, y_test)
+        correct = 0
+        for i in range(size):
+            if (result[i] == y_rand_test[i]):
+                correct += 1
+        
+        print(f"Accuracy: {correct/size}")
 
 emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
 (x_train, y_train), (x_test, y_test) = emnist_dataloader.load_data()
@@ -276,11 +289,18 @@ while (True):
         else:
             print("Invalid train input")
     elif user_input.upper() == 'E':
-        start_index = int(input("Starting index of test_images:"))
-        size = int(input("Size of input batch:"))
+        start_index = 0
+        print("Total size of test images ", len(x_test))
+        size = int(input("Size of input batch(0 for all):"))
+        if not size == 0:
+            start_index = int(input("Starting index of test_images:"))
         filename_model = input("Model Filename: ")
-        test_model(model, start_index, size, filename_model)
-        break
+        filename_weights = input("Weights Filename: ")
+        if start_index + size > len(x_test):
+            print("Invalid combination of size and start index")
+        else:
+            test_model(model, start_index, size, filename_model)
+            break
     elif user_input.upper() == 'S':
         sample_emnist()
     elif user_input.upper() == 'Q':
