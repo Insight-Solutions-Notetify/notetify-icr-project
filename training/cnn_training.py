@@ -159,6 +159,7 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
     else:
         print("Creating new model")
     
+    round_results = []
     start = timer()
 
     # Check if recompiling on each session is neccessary or loss in performance
@@ -189,18 +190,25 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
                             verbose=1)
         
 
-        print(f"Completed round {round}. Results: ")
+        print(f"Completed round {round + 1}. Results: ")
         # print(history.history)
         evaluation = model.evaluate(x_test, y_test)
         print("test loss, test acc:", evaluation)
+
+        results = f"Round {round + 1} - test loss, test acc: {evaluation}"
+        round_results.append(results)
         
-        model.save(f'training/emnist_model_{round}.keras') # Save between each round of epoch ()
+        model.save(f'training/emnist_model_{round}.keras') # Save between each round of epoch () 
         # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
      
-
-    print(f"Total Time consumed for {epoch} epochs -->", timer()-start)
-
     model.save('training/emnist_model.keras') # Final save after all operations
+
+    print(f"====================================\n",
+           "Total Time consumed for {epoch} epochs -->", timer()-start,
+           "Results of all rounds:")
+    for result in round_results:
+        print(result)
+
 
 # Testing module
 def test_model(model=None, start_index=0, size=0, filename_model=None, filename_weights=None):
