@@ -311,3 +311,6 @@ while (True):
     else:
         print("Invalid input try another")
 
+
+    print("Leaving program")
+
