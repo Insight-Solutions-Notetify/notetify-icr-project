@@ -237,80 +237,79 @@ def test_model(model=None, start_index=0, size=0, filename_model=None, filename_
         
         print(f"Accuracy: {correct/size}")
 
-emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
-(x_train, y_train), (x_test, y_test) = emnist_dataloader.load_data()
-# sample_emnist()
+if __name__ == '__main__':
+    emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
+    (x_train, y_train), (x_test, y_test) = emnist_dataloader.load_data()
+    # sample_emnist()
 
-# Check for GPU available
-available_GPU = "Num GPUs Available: ", len(tf.config.list_physical_devices('GPU'))
-# print(available_GPU)
-info_GPU = tf.config.list_physical_devices()
-# print(info_GPU)
+    # Check for GPU available
+    available_GPU = "Num GPUs Available: ", len(tf.config.list_physical_devices('GPU'))
+    # print(available_GPU)
+    info_GPU = tf.config.list_physical_devices()
+    # print(info_GPU)
 
-# LeNet - 5 modified for 62 outputs
-model = models.Sequential()
-model.add(layers.Input(shape=(28, 28, 1)))
-model.add(layers.Conv2D(filters=32, kernel_size=(5, 5), padding='same', activation='relu'))
-model.add(layers.MaxPooling2D(strides=2))
-model.add(layers.Conv2D(filters=48, kernel_size=(5, 5), padding='valid', activation='relu')) 
-model.add(layers.MaxPooling2D(strides=2))
-model.add(layers.Flatten())
-model.add(layers.Dense(256, activation='relu'))
-model.add(layers.Dense(84, activation='relu'))
-model.add(layers.Dense(62, activation='softmax'))
+    # LeNet - 5 modified for 62 outputs
+    model = models.Sequential()
+    model.add(layers.Input(shape=(28, 28, 1)))
+    model.add(layers.Conv2D(filters=32, kernel_size=(5, 5), padding='same', activation='relu'))
+    model.add(layers.MaxPooling2D(strides=2))
+    model.add(layers.Conv2D(filters=48, kernel_size=(5, 5), padding='valid', activation='relu')) 
+    model.add(layers.MaxPooling2D(strides=2))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(256, activation='relu'))
+    model.add(layers.Dense(84, activation='relu'))
+    model.add(layers.Dense(62, activation='softmax'))
 
-# model.build()
-# Show composition of model
-# model.summary()
+    # model.build()
+    # Show composition of model
+    # model.summary()
 
-# Main Loop
-while (True):
-    print("(T)rain, (E)valuate, (S)ample EMNIST or (Q)uit?")
-    user_input = input("Command: ")
+    # Main Loop
+    while (True):
+        print("(T)rain, (E)valuate, (S)ample EMNIST or (Q)uit?")
+        user_input = input("Command: ")
 
-    if user_input.upper() == 'T':
-        default = input("(D)efault or (C)ustom?: ")
-        if default.upper() == 'D':
-            round = 1
-            epoch = 60
-            sleep = 30
+        if user_input.upper() == 'T':
+            default = input("(D)efault or (C)ustom?: ")
+            if default.upper() == 'D':
+                round = 1
+                epoch = 60
+                sleep = 30
+                filename_model = 'emnist_model.keras'
+                filenmae_weights = 'emnist_model.weights.h5'
+                train_model(model, round, epoch, sleep, filename_model, filenmae_weights)
+                break
+            elif default.upper() == 'C':
+                round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
+                # epoch = int(input("Epochs (50 epochs = ~30min): "))
+                epoch = 60 # This should be decided rather than inputted by user since the number can affect performance (underfitting if too little or overfitting if too high)
+                sleep = int(input("Sleep Time Between Epochs(sec): "))
+                filename_model = input("Model Filename (Create new if empty): ")
+                filename_weights = input("Weights Filename (Empty if none): ")
+                train_model(model, round, epoch, sleep, filename_model, filename_weights)
+                break
+            else:
+                print("Invalid train input")
+        elif user_input.upper() == 'E':
+            start_index = 0
+            print("Total size of test images ", len(x_test))
+            size = int(input("Size of input batch(0 for all):"))
+            if not size == 0:
+                start_index = int(input("Starting index of test_images:"))
             filename_model = 'emnist_model.keras'
-            filenmae_weights = 'emnist_model.weights.h5'
-            train_model(model, round, epoch, sleep, filename_model, filenmae_weights)
-            break
-        elif default.upper() == 'C':
-            round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
-            # epoch = int(input("Epochs (50 epochs = ~30min): "))
-            epoch = 60 # This should be decided rather than inputted by user since the number can affect performance (underfitting if too little or overfitting if too high)
-            sleep = int(input("Sleep Time Between Epochs(sec): "))
-            filename_model = input("Model Filename (Create new if empty): ")
-            filename_weights = input("Weights Filename (Empty if none): ")
-            train_model(model, round, epoch, sleep, filename_model, filename_weights)
+            filename_weights = 'emnist_model.weights.h5'
+            # filename_model = input("Model Filename: ")
+            # filename_weights = input("Weights Filename: ")
+            if start_index + size > len(x_test):
+                print("Invalid combination of size and start index")
+            else:
+                test_model(model, start_index, size, filename_model)
+                break
+        elif user_input.upper() == 'S':
+            sample_emnist()
+        elif user_input.upper() == 'Q':
             break
         else:
-            print("Invalid train input")
-    elif user_input.upper() == 'E':
-        start_index = 0
-        print("Total size of test images ", len(x_test))
-        size = int(input("Size of input batch(0 for all):"))
-        if not size == 0:
-            start_index = int(input("Starting index of test_images:"))
-        filename_model = 'emnist_model.keras'
-        filename_weights = 'emnist_model.weights.h5'
-        # filename_model = input("Model Filename: ")
-        # filename_weights = input("Weights Filename: ")
-        if start_index + size > len(x_test):
-            print("Invalid combination of size and start index")
-        else:
-            test_model(model, start_index, size, filename_model)
-            break
-    elif user_input.upper() == 'S':
-        sample_emnist()
-    elif user_input.upper() == 'Q':
-        break
-    else:
-        print("Invalid input try another")
+            print("Invalid input try another")
 
-
-    print("Leaving program")
-
+        print("Leaving program")
