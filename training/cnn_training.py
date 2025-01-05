@@ -190,7 +190,7 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
         
 
         print(f"Completed round {round}. Results: ")
-        print(history.history)
+        # print(history.history)
         evaluation = model.evaluate(x_test, y_test)
         print("test loss, test acc:", evaluation)
         
