@@ -222,11 +222,12 @@ def test_model(model=None, start_index=0, size=0, filename_model=None, filename_
     
         x_rand_test = x_test[start_index:start_index + size]
         y_rand_test = y_test[start_index:start_index + size]
-        print(y_rand_test)
+        y_rand_test = [character_by_index[ix] for ix in y_rand_test]
         
         result = model.predict(x_rand_test, batch_size=32)
-        result = [int(np.argmax(ix) for ix in result)]
+        result = [character_by_index[int(np.argmax(ix))] for ix in result]
 
+        print(y_rand_test)
         print(result)
 
         correct = 0
@@ -294,8 +295,10 @@ while (True):
         size = int(input("Size of input batch(0 for all):"))
         if not size == 0:
             start_index = int(input("Starting index of test_images:"))
-        filename_model = input("Model Filename: ")
-        filename_weights = input("Weights Filename: ")
+        filename_model = 'emnist_model.keras'
+        filename_weights = 'emnist_model.weights.h5'
+        # filename_model = input("Model Filename: ")
+        # filename_weights = input("Weights Filename: ")
         if start_index + size > len(x_test):
             print("Invalid combination of size and start index")
         else:
