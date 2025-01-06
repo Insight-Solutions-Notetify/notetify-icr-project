@@ -1,9 +1,16 @@
+# Run pip install -r requirements.txt
+# Run python3 src/modules/text_region.py
+
 import cv2
 import numpy as np
+import os
+
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+os.chdir(project_root)
 
 # Load image, convert to HSV format, define lower/upper ranges, and perform
 # color segmentation to create a binary mask
-image = cv2.imread('black_sampel.jpg')
+image = cv2.imread('src/modules/black_sampel.jpg')
 
 shades = 5
 
@@ -24,8 +31,8 @@ gaussian = cv2.GaussianBlur(result, (kernel_dimension, kernel_dimension), sigma)
 gaussian = 255 - gaussian
 
 # Save result as shaded.jpg so we can convert to hsv
-cv2.imwrite('shaded.jpg', gaussian)
-shaded = cv2.imread('shaded.jpg')
+cv2.imwrite('src/modules/shaded.jpg', gaussian)
+shaded = cv2.imread('src/modules/shaded.jpg')
 
 hsv = cv2.cvtColor(shaded, cv2.COLOR_BGR2HSV)
 lower = np.array([0, 0, 100])
