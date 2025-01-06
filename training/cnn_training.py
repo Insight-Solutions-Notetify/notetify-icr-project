@@ -198,7 +198,8 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
         results = f"Round {round + 1} - test loss, test acc: {evaluation}"
         round_results.append(results)
         
-        model.save(f'training/emnist_model_{round}.keras') # Save between each round of epoch () 
+        # model.save(f'training/emnist_model_{round + 1}.keras') # Save between each round of epoch () 
+        model.save_weights(f'training/emnist_model_{round + 1}.weights.h5') # Save weights instead of model.keras
         # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
      
     model.save('training/emnist_model.keras') # Final save after all operations
