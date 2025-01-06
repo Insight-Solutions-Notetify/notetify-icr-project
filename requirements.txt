@@ -2,10 +2,6 @@ kagglehub==0.3.6
 numpy==2.0.2
 matplotlib==3.10.0
 tensorflow[and-cuda]==2.18.0
-<<<<<<< Updated upstream
-opencv-python==4.10.0.84
-=======
 opencv-python==4.10.0.84
 PyQt6==6.8.0
 pandas==2.2.3
->>>>>>> Stashed changes
