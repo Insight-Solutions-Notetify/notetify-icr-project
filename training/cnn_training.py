@@ -234,14 +234,14 @@ def test_model(model=None, start_index=0, size=0, filename_model=None, filename_
         y_rand_test = [character_by_index[ix] for ix in y_rand_test]
         
         result = model.predict(x_rand_test, batch_size=32)
-        result = [character_by_index[int(np.argmax(ix))] for ix in result]
+        printed_result = [character_by_index[np.argmax(ix)] for ix in result]
 
         print(y_rand_test)
-        print(result)
+        print(printed_result)
 
         correct = 0
         for i in range(size):
-            if (result[i] == y_rand_test[i]):
+            if (printed_result[i] == y_rand_test[i]):
                 correct += 1
         
         print(f"Accuracy: {correct/size}")
@@ -312,8 +312,7 @@ if __name__ == '__main__':
             if start_index + size > len(x_test):
                 print("Invalid combination of size and start index")
             else:
-                test_model(model, start_index, size, filename_model)
-                break
+                test_model(model, start_index, size, filename_model, filename_weights)
         elif user_input.upper() == 'S':
             sample_emnist()
         elif user_input.upper() == 'Q':
