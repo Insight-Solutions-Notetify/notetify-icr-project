@@ -1,5 +1,6 @@
 # Import the necessary libraries
 import cv2
+from cv2.typing import MatLike
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -20,10 +21,33 @@ from config.preprocess_config import preprocess_config
 # - Range of desired shades of handwriting to be included
 # - Mask on desired range
 
-def colorToShades(input_image: cv2.typing.MatLike ) -> cv2.typing.MatLike:
+def preprocessImage(input: MatLike) -> MatLike:
+    input = RGBToShades(input)
+    input = rescaleImage(input)
+    input = blurImage(input)
+    input = convertToHSV(input)
+    input = highlightText(input)
+    result = flipImage(input)
 
+    return result
+    
+def RGBToShades(input: MatLike ) -> MatLike:
+    pass
 
+def blurImage(input: MatLike) -> MatLike:
+    pass
 
+def rescaleImage(input: MatLike) -> MatLike:
+    pass
+
+def convertToHSV(input: MatLike) -> MatLike:
+    pass
+
+def highlightText(input: MatLike) -> MatLike:
+    pass
+
+def flipImage(input: MatLike) -> MatLike:
+    return 255 - input
 
 
 
@@ -62,6 +86,8 @@ scaled_image = cv2.resize(image_rgb, (new_width1, new_height1), interpolation=cv
 # Create subplots
 fig, axs = plt.subplots(1, 4, figsize=(15, 4))
 
+
+# SHOWING STEPS
 # Plot the original image
 axs[0].imshow(image_rgb)
 axs[0].set_title(f'Original Image\nShape: {image_rgb.shape}')
@@ -92,5 +118,12 @@ plt.show()
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
+    sample_image = cv2.imread("modules/black_sampel.jpg")
 
-    #
+    result = preprocessImage(sample_image)
+    
+    cv2.imshow("Original", sample_image)
+    cv2.imshow("Result", result)
+    cv2.waitKey(0)
+
+    print("Complete preprocess module")
