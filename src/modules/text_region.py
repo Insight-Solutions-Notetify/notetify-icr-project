@@ -26,10 +26,9 @@ gaussian = 255 - gaussian
 # Save result as shaded.jpg so we can convert to hsv
 cv2.imwrite('shaded.jpg', gaussian)
 shaded = cv2.imread('shaded.jpg')
-
 hsv = cv2.cvtColor(shaded, cv2.COLOR_BGR2HSV)
 lower = np.array([0, 0, 100])
-upper = np.array([157, 40, 255])
+upper = np.array([0, 0, 255])
 mask = cv2.inRange(hsv, lower, upper)
 
 # Create horizontal kernel and dilate to connect text characters
