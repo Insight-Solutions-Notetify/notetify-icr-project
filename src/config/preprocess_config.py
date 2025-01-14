@@ -7,18 +7,18 @@ class PreprocessConfig:
     RESIZED_FACOTR = 1/3.0
 
     # Shading
-    shades = 5
+    SHADES = 5
     
     # Gaussian Blur
-    kernel_dimension = 3
-    gaussian_sigma = 0
+    KERNEL_DIMS = 3
+    GAUSSIAN_SIGMA = 0
 
     # Masking
-    lower = np.array([0, 0, 100])
-    upper_mask = np.array([157, 40, 255])
+    LOWER_MASK = np.array([0, 0, 100])
+    UPPER_MASK = np.array([157, 40, 255])
     
     # Horizontal projection for text lines
-    RATIO = (5, 3)
+    KERNEL_RATIO = (5, 3)
     DILATE_ITER = 4
 
     
