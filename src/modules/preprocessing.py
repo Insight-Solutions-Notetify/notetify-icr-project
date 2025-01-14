@@ -78,7 +78,7 @@ def highlightText(input: MatLike) -> MatLike:
 # if image is None:
 #     raise FileNotFoundError("Image not loaded. Ensure 'black_sampel.jpg' exists in the same directory as the script.")
 
-image = cv2.imread('src/modules/black_sampel.jpg')
+image = cv2.imread('src/images/black_sample.jpg')
 # Convert BGR image to RGB
 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
@@ -146,7 +146,7 @@ plt.show()
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/modules/black_sampel.jpg")
+    sample_image = cv2.imread("src/images/black_sample.jpg")
 
     result = preprocessImage(sample_image)
     
