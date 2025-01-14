@@ -23,10 +23,10 @@ sigma = 0
 gaussian = cv2.GaussianBlur(result, (kernel_dimension, kernel_dimension), sigma)
 gaussian = 255 - gaussian
 
+reverted = cv2.cvtColor(gaussian, cv2.COLOR_GRAY2BGR)
+
 # Save result as shaded.jpg so we can convert to hsv
-cv2.imwrite('shaded.jpg', gaussian)
-shaded = cv2.imread('shaded.jpg')
-hsv = cv2.cvtColor(shaded, cv2.COLOR_BGR2HSV)
+hsv = cv2.cvtColor(reverted, cv2.COLOR_BGR2HSV)
 lower = np.array([0, 0, 100])
 upper = np.array([0, 0, 255])
 mask = cv2.inRange(hsv, lower, upper)
