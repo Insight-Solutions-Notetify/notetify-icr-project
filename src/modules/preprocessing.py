@@ -1,6 +1,7 @@
 # Import the necessary libraries
 import cv2
 from cv2.typing import MatLike
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -25,8 +26,8 @@ from src.config.preprocess_config import preprocess_config
 
 def preprocessImage(input: MatLike) -> MatLike:
     shaded = RGBToShades(input)
-    scaled = rescaleImage(shaded)
-    blurred = blurImage(scaled)
+    # scaled = rescaleImage(shaded)
+    blurred = blurImage(shaded)
     hsv = convertToHSV(blurred)
     highlighted = highlightText(hsv)
     result = flipImage(highlighted)
@@ -37,31 +38,41 @@ def RGBToShades(input: MatLike ) -> MatLike:
     gray_image = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
     gray_image = gray_image.astype(np.float32)/255
 
-    result = 255 * np.floor(gray_image * preprocess_config.shades + 0.5) / preprocess_config.shades
+    result = 255 * np.floor(gray_image * preprocess_config.SHADES + 0.5) / preprocess_config.SHADES
     result = result.clip(0 ,255).astype(np.uint8)
     
     return result
 
+def flipImage(input: MatLike) -> MatLike:
+    return 255 - input
+
 def blurImage(input: MatLike) -> MatLike:
-    pass
+    gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), preprocess_config.GAUSSIAN_SIGMA)
+    reverted = cv2.cvtColor(flipImage(gaussian), cv2.COLOR_GRAY2BGR)
+    return reverted
 
 def rescaleImage(input: MatLike) -> MatLike:
     pass
 
 def convertToHSV(input: MatLike) -> MatLike:
-    pass
+    hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
+    return hsv
 
 def highlightText(input: MatLike) -> MatLike:
-    pass
+    mask = cv2.inRange(input, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
 
-def flipImage(input: MatLike) -> MatLike:
-    return 255 - input
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
+    dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.DILATE_ITER)
 
-
-
-# OLD #
-# Load the image
-# image = cv2.imread('black_sampel.jpg')
+    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    for c in cnts:
+        x, y, w, h = cv2.boundingRect(c)
+        ar = w / float(h)
+        if ar < 5:
+            cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
+    
+    return flipImage(cv2.bitwise_and(dilate, mask))
 
 # # Check if the image is loaded
 # if image is None:
@@ -135,12 +146,12 @@ plt.show()
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("modules/black_sampel.jpg")
+    sample_image = cv2.imread("src/modules/black_sampel.jpg")
 
     result = preprocessImage(sample_image)
     
     cv2.imshow("Original", sample_image)
     cv2.imshow("Result", result)
-    cv2.waitKey(0)
+    cv2.waitKey()
 
     print("Complete preprocess module")
