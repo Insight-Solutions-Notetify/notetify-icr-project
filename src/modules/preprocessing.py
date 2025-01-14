@@ -8,13 +8,15 @@ import sys
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
+os.chdir(project_root)
 
-from config.preprocess_config import preprocess_config
+from src.config.preprocess_config import preprocess_config
 
 ### PREPROCESS MODULE ###
 
 # Preprocess Module will process type .jpg images to prepare for segmentation
 # Requirements:
+# - Input is the MatLike surface since the main driver already retrieved image and convert it to cv2 ready format
 # - non-text regions are excluded from the image
 # - binary result of image either being white (1) or black(0)
 # - Resizing/ De-blurring for varying image inputs and quality.
@@ -22,17 +24,23 @@ from config.preprocess_config import preprocess_config
 # - Mask on desired range
 
 def preprocessImage(input: MatLike) -> MatLike:
-    input = RGBToShades(input)
-    input = rescaleImage(input)
-    input = blurImage(input)
-    input = convertToHSV(input)
-    input = highlightText(input)
-    result = flipImage(input)
+    shaded = RGBToShades(input)
+    scaled = rescaleImage(shaded)
+    blurred = blurImage(scaled)
+    hsv = convertToHSV(blurred)
+    highlighted = highlightText(hsv)
+    result = flipImage(highlighted)
 
     return result
     
 def RGBToShades(input: MatLike ) -> MatLike:
-    pass
+    gray_image = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+    gray_image = gray_image.astype(np.float32)/255
+
+    result = 255 * np.floor(gray_image * preprocess_config.shades + 0.5) / preprocess_config.shades
+    result = result.clip(0 ,255).astype(np.uint8)
+    
+    return result
 
 def blurImage(input: MatLike) -> MatLike:
     pass
@@ -59,7 +67,7 @@ def flipImage(input: MatLike) -> MatLike:
 # if image is None:
 #     raise FileNotFoundError("Image not loaded. Ensure 'black_sampel.jpg' exists in the same directory as the script.")
 
-image = cv2.imread(r'C:\Users\glee5\OneDrive\Documents\GitHub\notetify-icr-project\src\modules\black_sampel.jpg')
+image = cv2.imread('src/modules/black_sampel.jpg')
 # Convert BGR image to RGB
 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
@@ -82,6 +90,15 @@ zoomed_image = cv2.resize(image_rgb, (new_width, new_height), interpolation=cv2.
 new_height1 = int(height * scale_factor_2)
 new_width1 = int(width * scale_factor_2)
 scaled_image = cv2.resize(image_rgb, (new_width1, new_height1), interpolation=cv2.INTER_AREA)
+
+# Convert the image to grayscale
+image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+# Define the scale factors
+scale_factor_1 = 3.0  # Increase size
+scale_factor_2 = 1/3.0  # Decrease size
+
+# Get the original image dimensions
 
 # Create subplots
 fig, axs = plt.subplots(1, 4, figsize=(15, 4))
