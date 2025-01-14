@@ -2,7 +2,32 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+import sys
 
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.insert(0, project_root)
+
+from config.preprocess_config import preprocess_config
+
+### PREPROCESS MODULE ###
+
+# Preprocess Module will process type .jpg images to prepare for segmentation
+# Requirements:
+# - non-text regions are excluded from the image
+# - binary result of image either being white (1) or black(0)
+# - Resizing/ De-blurring for varying image inputs and quality.
+# - Range of desired shades of handwriting to be included
+# - Mask on desired range
+
+def colorToShades(input_image: cv2.typing.MatLike ) -> cv2.typing.MatLike:
+
+
+
+
+
+
+# OLD #
 # Load the image
 # image = cv2.imread('black_sampel.jpg')
 
@@ -61,3 +86,11 @@ for ax in axs:
 # Display the images
 plt.tight_layout()
 plt.show()
+
+
+
+if __name__ == "__main__":
+    print("Testing preprocessing module")
+    
+
+    #
