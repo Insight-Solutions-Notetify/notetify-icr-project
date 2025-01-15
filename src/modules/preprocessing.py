@@ -37,33 +37,34 @@ def BGRToShades(input: MatLike ) -> MatLike:
 
 
 def GRAYToBGR(input: MatLike) -> MatLike:
+    ''' Convert GRAY to BGR '''
     reverted = cv2.cvtColor(input, cv2.COLOR_GRAY2BGR)
     return reverted
 
 
 def BGRToHSV(input: MatLike) -> MatLike:
-    '''Convert BGR formatted MatLike's into HSV MatLike's'''
+    ''' Convert BGR to HSV '''
     hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
     return hsv
 
 
 def flipImage(input: MatLike) -> MatLike:
-    ''' Inverse of inputted image'''
+    ''' Inverse of inputted image '''
     return 255 - input
 
 
-def blurImage(input: MatLike) -> MatLike:
-    gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), preprocess_config.GAUSSIAN_SIGMA)
+def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike:
+    gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), sigma)
     return gaussian
 
 
 def rescaleImage(input: MatLike) -> MatLike:
-    ''' Rescale images into'''
+    ''' Rescale images into '''
     pass
 
 
 def highlightText(input: MatLike) -> MatLike:
-    ''' highlightText(input) returns text-only regions and excluding everything else'''
+    ''' Highlights text-only regions, excluding everything else '''
     mask = cv2.inRange(input, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
@@ -82,6 +83,7 @@ def highlightText(input: MatLike) -> MatLike:
 
 
 def preprocessImage(input: MatLike) -> MatLike:
+    ''' Main process of preprocessing each step is separated into individual functions '''
     shaded = BGRToShades(input)
     # scaled = rescaleImage(shaded)
     blurred = blurImage(shaded)
@@ -105,8 +107,6 @@ if __name__ == "__main__":
     cv2.imshow("Original", sample_image)
     cv2.imshow("Result", result)
     cv2.imshow("Inverted Result", inverse)
-
-
     cv2.waitKey(0)
 
     print("Complete preprocess module")
