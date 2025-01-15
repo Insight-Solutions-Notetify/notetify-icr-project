@@ -24,17 +24,9 @@ from src.config.preprocess_config import preprocess_config
 # - Range of desired shades of handwriting to be included
 # - Mask on desired range
 
-def preprocessImage(input: MatLike) -> MatLike:
-    shaded = RGBToShades(input)
-    # scaled = rescaleImage(shaded)
-    blurred = blurImage(shaded)
-    hsv = convertToHSV(blurred)
-    highlighted = highlightText(hsv)
-    result = flipImage(highlighted)
-
-    return result
     
-def RGBToShades(input: MatLike ) -> MatLike:
+def BGRToShades(input: MatLike ) -> MatLike:
+    ''' Convert BGR to specialized Shades of GRAY'''
     gray_image = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
     gray_image = gray_image.astype(np.float32)/255
 
@@ -43,28 +35,42 @@ def RGBToShades(input: MatLike ) -> MatLike:
     
     return result
 
-def flipImage(input: MatLike) -> MatLike:
-    return 255 - input
 
-def blurImage(input: MatLike) -> MatLike:
-    gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), preprocess_config.GAUSSIAN_SIGMA)
-    reverted = cv2.cvtColor(flipImage(gaussian), cv2.COLOR_GRAY2BGR)
+def GRAYToBGR(input: MatLike) -> MatLike:
+    reverted = cv2.cvtColor(input, cv2.COLOR_GRAY2BGR)
     return reverted
 
-def rescaleImage(input: MatLike) -> MatLike:
-    pass
 
-def convertToHSV(input: MatLike) -> MatLike:
+def BGRToHSV(input: MatLike) -> MatLike:
+    '''Convert BGR formatted MatLike's into HSV MatLike's'''
     hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
     return hsv
 
+
+def flipImage(input: MatLike) -> MatLike:
+    ''' Inverse of inputted image'''
+    return 255 - input
+
+
+def blurImage(input: MatLike) -> MatLike:
+    gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), preprocess_config.GAUSSIAN_SIGMA)
+    return gaussian
+
+
+def rescaleImage(input: MatLike) -> MatLike:
+    ''' Rescale images into'''
+    pass
+
+
 def highlightText(input: MatLike) -> MatLike:
+    ''' highlightText(input) returns text-only regions and excluding everything else'''
     mask = cv2.inRange(input, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
     dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.DILATE_ITER)
 
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
@@ -72,7 +78,39 @@ def highlightText(input: MatLike) -> MatLike:
         if ar < 5:
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
     
-    return flipImage(cv2.bitwise_and(dilate, mask))
+    return cv2.bitwise_and(dilate, mask)
+
+
+def preprocessImage(input: MatLike) -> MatLike:
+    shaded = BGRToShades(input)
+    # scaled = rescaleImage(shaded)
+    blurred = blurImage(shaded)
+    reverted = flipImage(GRAYToBGR(blurred)) # blurred is in GRAY format and inverted
+    hsv = BGRToHSV(reverted)
+    highlighted = highlightText(hsv)
+    flipped = flipImage(highlighted)
+    result = blurImage(flipped)
+
+    return result
+
+
+if __name__ == "__main__":
+    print("Testing preprocessing module")
+    
+    sample_image = cv2.imread("src/images/black_sample.jpg")
+
+    result = preprocessImage(sample_image)
+    inverse = flipImage(result)
+    
+    cv2.imshow("Original", sample_image)
+    cv2.imshow("Result", result)
+    cv2.imshow("Inverted Result", inverse)
+
+
+    cv2.waitKey(0)
+
+    print("Complete preprocess module")
+
 
 # # Check if the image is loaded
 # if image is None:
@@ -140,18 +178,3 @@ for ax in axs:
 # Display the images
 plt.tight_layout()
 plt.show()
-
-
-
-if __name__ == "__main__":
-    print("Testing preprocessing module")
-    
-    sample_image = cv2.imread("src/images/black_sample.jpg")
-
-    result = preprocessImage(sample_image)
-    
-    cv2.imshow("Original", sample_image)
-    cv2.imshow("Result", result)
-    cv2.waitKey()
-
-    print("Complete preprocess module")
