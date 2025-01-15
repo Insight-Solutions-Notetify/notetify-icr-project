@@ -64,7 +64,7 @@ def rescaleImage(input: MatLike) -> MatLike:
 
 
 def highlightText(input: MatLike) -> MatLike:
-    ''' Highlights text-only regions, excluding everything else '''
+    ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
     mask = cv2.inRange(input, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
