@@ -153,7 +153,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/images/IMG_5579.jpg")
+    sample_image = cv2.imread("src/images/test_sample_2.jpg")
     # cv2.imshow("Original", sample_image)
 
     result = preprocessImage(sample_image)
