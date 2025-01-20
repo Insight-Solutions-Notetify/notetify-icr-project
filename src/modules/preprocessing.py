@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import sys
+from typing import Set
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
@@ -46,35 +47,51 @@ def BGRToHSV(input: MatLike) -> MatLike:
     hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
     return hsv
 
-
 def flipImage(input: MatLike) -> MatLike:
     ''' Inverse of inputted image '''
     return 255 - input
 
+def contrastImage(input: MatLike, contrast=preprocess_config.CONTRAST, brightness=preprocess_config.BRIGHTNESS):
+    ''' Apply a contrast and brightness adjustment to the image '''
+    adjusted_image = cv2.addWeighted(input, contrast, np.zeros(input.shape, input.dtype), 0, brightness)
+    return adjusted_image
 
 def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike:
     gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), sigma)
     return gaussian
 
+def rangeOfText(input: MatLike) -> Set:
+    hist = cv2.calcHist(input, [5], None, [32], [0, 256])
+    
+    return (input, (0, 100), (0, 100))
 
 def rescaleImage(input: MatLike) -> MatLike:
     ''' Rescale images down to a standard acceptable for input '''
-    img_width, img_height = input.shape
-    IMG_RATIO = 0
+    img_width, _, _  = input.shape
+
     if img_width > preprocess_config.MAX_WIDTH:
         IMG_RATIO = preprocess_config.MAX_WIDTH / img_width
     else:
         IMG_RATIO = img_width / preprocess_config.MAX_WIDTH
 
     result = cv2.resize(input,(0, 0), fx=IMG_RATIO, fy=IMG_RATIO)
-    print(result.shape)
     
     return result
 
+def highlightBoundary(input: MatLike) -> MatLike:
+    ''' Removes any background apart from the medium where the the text is located'''
+    return input
 
 def highlightText(input: MatLike) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
-    mask = cv2.inRange(input, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
+    shaded = BGRToShades(input)
+    analyzed, text_range, foreground_range = rangeOfText(shaded)
+    reverted = flipImage(GRAYToBGR(analyzed))
+    hsv = BGRToHSV(reverted)
+
+    mask = cv2.inRange(hsv, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
+
+    # return cv2.bitwise_and(input, mask)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
     dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.DILATE_ITER)
@@ -87,20 +104,26 @@ def highlightText(input: MatLike) -> MatLike:
         ar = w / float(h)
         if ar < 5:
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
+
+
     
-    return cv2.bitwise_and(dilate, mask)
+    return blurImage(flipImage(cv2.bitwise_and(dilate, mask)))
+
 
 
 def preprocessImage(input: MatLike) -> MatLike:
     ''' Main process of preprocessing each step is separated into individual functions '''
-    shaded = BGRToShades(input)
-    scaled = rescaleImage(shaded)
+
+    # Apply filters to image
+    weighted = contrastImage(input)
+    scaled = rescaleImage(weighted)
     blurred = blurImage(scaled)
-    reverted = flipImage(GRAYToBGR(blurred)) # blurred is in GRAY format and inverted
-    hsv = BGRToHSV(reverted)
-    highlighted = highlightText(hsv)
-    flipped = flipImage(highlighted)
-    result = blurImage(flipped)
+
+    # Exclude everything else except the region of the note
+    note = highlightBoundary(blurred)
+
+    # Exclude everything else except the actual text that make up the note
+    result = highlightText(note)
 
     return result
 
@@ -108,14 +131,15 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/images/IMG_5565.jpg")
+    sample_image = cv2.imread("src/images/IMG_5579.jpg")
+    # cv2.imshow("Original", sample_image)
 
     result = preprocessImage(sample_image)
-    inverse = flipImage(result)
-    
-    cv2.imshow("Original", sample_image)
     cv2.imshow("Result", result)
-    cv2.imshow("Inverted Result", inverse)
+    
+
+    # inverse = flipImage(result)
+    # cv2.imshow("Inverted Result", inverse)
     cv2.waitKey(0)
 
     print("Complete preprocess module")
