@@ -5,6 +5,7 @@ class PreprocessConfig:
     # Image Rescaling Parameters
     ZOOM_FACTOR = 3.0
     RESIZED_FACOTR = 1/3.0
+    MAX_WIDTH = 1000
 
     # Shading
     SHADES = 5
