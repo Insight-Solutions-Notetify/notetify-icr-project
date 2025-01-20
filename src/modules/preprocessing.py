@@ -41,7 +41,6 @@ def GRAYToBGR(input: MatLike) -> MatLike:
     reverted = cv2.cvtColor(input, cv2.COLOR_GRAY2BGR)
     return reverted
 
-
 def BGRToHSV(input: MatLike) -> MatLike:
     ''' Convert BGR to HSV '''
     hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
@@ -59,8 +58,18 @@ def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike
 
 
 def rescaleImage(input: MatLike) -> MatLike:
-    ''' Rescale images into '''
-    pass
+    ''' Rescale images down to a standard acceptable for input '''
+    img_width, img_height = input.shape
+    IMG_RATIO = 0
+    if img_width > preprocess_config.MAX_WIDTH:
+        IMG_RATIO = preprocess_config.MAX_WIDTH / img_width
+    else:
+        IMG_RATIO = img_width / preprocess_config.MAX_WIDTH
+
+    result = cv2.resize(input,(0, 0), fx=IMG_RATIO, fy=IMG_RATIO)
+    print(result.shape)
+    
+    return result
 
 
 def highlightText(input: MatLike) -> MatLike:
@@ -85,8 +94,8 @@ def highlightText(input: MatLike) -> MatLike:
 def preprocessImage(input: MatLike) -> MatLike:
     ''' Main process of preprocessing each step is separated into individual functions '''
     shaded = BGRToShades(input)
-    # scaled = rescaleImage(shaded)
-    blurred = blurImage(shaded)
+    scaled = rescaleImage(shaded)
+    blurred = blurImage(scaled)
     reverted = flipImage(GRAYToBGR(blurred)) # blurred is in GRAY format and inverted
     hsv = BGRToHSV(reverted)
     highlighted = highlightText(hsv)
@@ -99,7 +108,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/images/black_sample.jpg")
+    sample_image = cv2.imread("src/images/IMG_5565.jpg")
 
     result = preprocessImage(sample_image)
     inverse = flipImage(result)
