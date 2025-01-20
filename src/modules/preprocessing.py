@@ -36,7 +36,6 @@ def BGRToShades(input: MatLike ) -> MatLike:
     
     return result
 
-
 def GRAYToBGR(input: MatLike) -> MatLike:
     ''' Convert GRAY to BGR '''
     reverted = cv2.cvtColor(input, cv2.COLOR_GRAY2BGR)
@@ -80,7 +79,31 @@ def rescaleImage(input: MatLike) -> MatLike:
 
 def highlightBoundary(input: MatLike) -> MatLike:
     ''' Removes any background apart from the medium where the the text is located'''
-    return input
+    flipped = flipImage(input)
+    shaded = cv2.cvtColor(flipped, cv2.COLOR_BGR2GRAY)
+
+    contours, _ = cv2.findContours(shaded, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+    cv2.drawContours(shaded, contours, -1, (100, 100, 100), 10)
+
+    return flipImage(GRAYToBGR(shaded))
+
+    # edged = cv2.Canny(shaded, 0, 255)
+    # contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    # mask = np.zeros(input.shape, input.dtype)
+
+    # for channel in range(input.shape[2]):
+    #     ret, thresh = cv2.threshold(input[:,:,channel], 38, 255, cv2.THRESH_BINARY)
+
+    #     contours = cv2.findContours(thresh, 1, 1)[0]
+    #     cv2.drawContours(mask, contours, -1, (255, 255 ,255), 3)
+
+    # contours = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
+
+    # image_binary = np.zeros(input.shape, input.dtype)
+    # cv2.drawContours( image_binary, [max(contours, key=cv2.contourArea)], -1, (255, 255 ,255), -1)
+
+    return flipped
 
 def highlightText(input: MatLike) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
@@ -105,9 +128,7 @@ def highlightText(input: MatLike) -> MatLike:
         if ar < 5:
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
 
-
-    
-    return blurImage(flipImage(cv2.bitwise_and(dilate, mask)))
+    return blurImage(flipImage(cv2.bitwise_and(dilate, mask)), 0.5) # Change blur after text extraction to be 0.5
 
 
 
@@ -122,6 +143,7 @@ def preprocessImage(input: MatLike) -> MatLike:
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred)
 
+    return note
     # Exclude everything else except the actual text that make up the note
     result = highlightText(note)
 
