@@ -79,46 +79,38 @@ def rescaleImage(input: MatLike) -> MatLike:
 
 def highlightBoundary(input: MatLike) -> MatLike:
     ''' Removes any background apart from the medium where the the text is located'''
+    x_box, y_box = 0, 0
+    min_width, min_height = 0, 0
+
     flipped = flipImage(input)
     shaded = cv2.cvtColor(flipped, cv2.COLOR_BGR2GRAY)
     thresh = cv2.threshold(shaded, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1))
+    dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
+    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-
-    # for ix in range(len(contours)):
-    #     print("Contour: ", ix)
-    #     print(contours[ix])
-    #     print(cv2.contourArea(contours[ix]))
-    #     cv2.drawContours(shaded, contours, ix, (255, 255, 255), 1)
-
-    # cv2.drawContours(shaded, contours, -1, (100, 100, 100), 10)
-
+    for c in cnts:
+        x, y, w, h = cv2.boundingRect(c)
+        width_ratio = w / float(preprocess_config.MAX_WIDTH)
+        ar = w / float(h)
+        if width_ratio > 0.7:
+            cv2.drawContours(shaded, [c], -1, (0, 0, 0), -1)
+            min_width = max(min_width, w)
+            min_height = max(min_height, h)
+            x_box, y_box = max(x_box, x), max(y_box, y)
+    
+    result = shaded[y_box:y_box + min_height, x_box:x_box + min_width]
     return flipImage(GRAYToBGR(shaded))
-
-    # edged = cv2.Canny(shaded, 0, 255)
-    # contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    # mask = np.zeros(input.shape, input.dtype)
-
-    # for channel in range(input.shape[2]):
-    #     ret, thresh = cv2.threshold(input[:,:,channel], 38, 255, cv2.THRESH_BINARY)
-
-    #     contours = cv2.findContours(thresh, 1, 1)[0]
-    #     cv2.drawContours(mask, contours, -1, (255, 255 ,255), 3)
-
-    # contours = cv2.findContours(mask, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
-
-    # image_binary = np.zeros(input.shape, input.dtype)
-    # cv2.drawContours( image_binary, [max(contours, key=cv2.contourArea)], -1, (255, 255 ,255), -1)
-
-    return flipped
 
 def highlightText(input: MatLike) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
-    shaded = BGRToShades(input)
-    analyzed, text_range, foreground_range = rangeOfText(shaded)
-    reverted = flipImage(GRAYToBGR(analyzed))
-    hsv = BGRToHSV(reverted)
+    # shaded = BGRToShades(input)
+    # analyzed, text_range, foreground_range = rangeOfText(shaded)
+    # reverted = flipImage(GRAYToBGR(analyzed))
+    hsv = BGRToHSV(input)
 
     mask = cv2.inRange(hsv, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
 
@@ -126,17 +118,20 @@ def highlightText(input: MatLike) -> MatLike:
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
     dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.DILATE_ITER)
-    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cv2.findContours(flipImage(dilate), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Remove contours that are too small to be text
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    # print(len(cnts))
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         ar = w / float(h)
+        # print(ar)
         if ar < preprocess_config.ASPECT_RATIO:
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
 
-    return blurImage(flipImage(cv2.bitwise_and(dilate, mask)), 0.5) # Change blur after text extraction to be 0.5
+    # return dilate
+    return blurImage(cv2.bitwise_and(dilate, mask), 0.2) # Change blur after text extraction to be 0.5
 
 
 
@@ -149,11 +144,11 @@ def preprocessImage(input: MatLike) -> MatLike:
     blurred = blurImage(scaled)
 
     # Exclude everything else except the region of the note
-    # note = highlightBoundary(blurred)
+    note = highlightBoundary(blurred)
 
     # return note
     # Exclude everything else except the actual text that make up the note
-    result = highlightText(blurred)
+    result = highlightText(note)
 
     return result
 
@@ -161,13 +156,12 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/images/test_sample_2.jpg")
+    sample_image = cv2.imread("src/images/black_sample.jpg")
     # cv2.imshow("Original", sample_image)
 
     result = preprocessImage(sample_image)
     cv2.imshow("Result", result)
     
-
     # inverse = flipImage(result)
     # cv2.imshow("Inverted Result", inverse)
     cv2.waitKey(0)
