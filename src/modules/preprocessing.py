@@ -82,6 +82,11 @@ def highlightBoundary(input: MatLike) -> MatLike:
     x_box, y_box = 0, 0
     min_width, min_height = 0, 0
 
+    # Need to implement range of text colors to dynamically handle a wide variety of light conditions and color ranges of text and background
+    # shaded = BGRToShades(input)
+    # analyzed, text_range, foreground_range = rangeOfText(shaded)
+    # reverted = flipImage(GRAYToBGR(analyzed))
+
     flipped = flipImage(input)
     shaded = cv2.cvtColor(flipped, cv2.COLOR_BGR2GRAY)
     thresh = cv2.threshold(shaded, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
@@ -107,6 +112,9 @@ def highlightBoundary(input: MatLike) -> MatLike:
 
 def highlightText(input: MatLike) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
+
+    # Need to implement range of text colors to dynamically handle a wide variety of light conditions and color ranges of text and background
+    # Need to implement range of text to
     # shaded = BGRToShades(input)
     # analyzed, text_range, foreground_range = rangeOfText(shaded)
     # reverted = flipImage(GRAYToBGR(analyzed))
@@ -146,7 +154,7 @@ def preprocessImage(input: MatLike) -> MatLike:
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred)
 
-    # return note
+    return note
     # Exclude everything else except the actual text that make up the note
     result = highlightText(note)
 
@@ -156,7 +164,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/images/black_sample.jpg")
+    sample_image = cv2.imread("src/images/IMG_5565.jpg")
     # cv2.imshow("Original", sample_image)
 
     result = preprocessImage(sample_image)
