@@ -22,7 +22,7 @@ class PreprocessConfig:
 
 
     # Masking
-    LOWER_MASK = np.array([0, 0, 100]) # TODO - This should dynamically change based on the histogram of the image
+    LOWER_MASK = np.array([0, 0, 170]) # TODO - This should dynamically change based on the histogram of the image
     UPPER_MASK = np.array([0, 0, 255]) # TODO - The second most common grouping of color is most likely text and not the background
     
 
