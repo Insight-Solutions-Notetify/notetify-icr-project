@@ -179,7 +179,7 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
                                             verbose=1)
     
     # Learning rate annealer
-    reduce_lr = callbacks.ReduceLROnPlateau(monitor='val_acc', patience=3, verbose=1, factor=0.2, min_lr=1e-6)
+    reduce_lr = callbacks.ReduceLROnPlateau(monitor='val_accuracy', patience=3, verbose=1, factor=0.2, min_lr=1e-6)
 
     for round in range(rounds):
         history = model.fit(x_train, y_train,
@@ -201,6 +201,12 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
         # model.save(f'training/emnist_model_{round + 1}.keras') # Save between each round of epoch () 
         model.save_weights(f'training/emnist_model_{round + 1}.weights.h5') # Save weights instead of model.keras
         # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
+
+        # Reset optimzier learning rate for fresh lense on sample data
+        model.compile(optimizer=adam,
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy']) # Check what other metrics can be analyzed)
+        model.load_weights(checkpoint_path)
      
     model.save('training/emnist_model.keras') # Final save after all operations
 
