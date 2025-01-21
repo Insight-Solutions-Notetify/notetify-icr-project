@@ -158,6 +158,20 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
             print("No weights file provided")
     else:
         print("Creating new model")
+        # LeNet - 5 modified for 62 outputs
+        model = models.Sequential()
+        model.add(layers.Input(shape=(28, 28, 1)))
+        model.add(layers.Conv2D(filters=32, kernel_size=(5, 5), padding='same', activation='relu'))
+        model.add(layers.MaxPooling2D(strides=2))
+        model.add(layers.Conv2D(filters=48, kernel_size=(5, 5), padding='valid', activation='relu')) 
+        model.add(layers.MaxPooling2D(strides=2))
+        model.add(layers.Flatten())
+        model.add(layers.Dense(256, activation='relu'))
+        model.add(layers.Dense(84, activation='relu'))
+        model.add(layers.Dense(62, activation='softmax'))
+        # model.build()
+        # Show composition of model
+        # model.summary()
     
     round_results = []
     start = timer()
@@ -176,16 +190,24 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
 
     early_stopping = callbacks.EarlyStopping(monitor='val_loss',
                                             patience=10,
-                                            verbose=1)
+                                            verbose=1,
+                                            min_delta=0.001)
     
     # Learning rate annealer
     reduce_lr = callbacks.ReduceLROnPlateau(monitor='val_accuracy', patience=3, verbose=1, factor=0.2, min_lr=1e-6)
 
     for round in range(rounds):
+        # Reset optimzier learning rate for fresh lense on sample data
+        adam.learning_rate = 5e-4
+        print(adam._get_current_learning_rate())
+        model.compile(optimizer=adam,
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy']) # Check what other metrics can be analyzed)
+
         history = model.fit(x_train, y_train,
                             epochs=epoch, # 100 epochs is 1 hour with RTX 4080
                             validation_data=(x_test, y_test),
-                            batch_size=16,
+                            # batch_size=32,
                             callbacks=[early_stopping, cp_callback, reduce_lr, EpochDelayCallback(delay_seconds=sleep)],
                             verbose=1)
         
@@ -201,11 +223,6 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
         # model.save(f'training/emnist_model_{round + 1}.keras') # Save between each round of epoch () 
         model.save_weights(f'training/emnist_model_{round + 1}.weights.h5') # Save weights instead of model.keras
         # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
-
-        # Reset optimzier learning rate for fresh lense on sample data
-        model.compile(optimizer=adam,
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy']) # Check what other metrics can be analyzed)
         model.load_weights(checkpoint_path)
      
     model.save('training/emnist_model.keras') # Final save after all operations
@@ -258,26 +275,19 @@ if __name__ == '__main__':
     # sample_emnist()
 
     # Check for GPU available
-    available_GPU = "Num GPUs Available: ", len(tf.config.list_physical_devices('GPU'))
+    # available_GPU = "Num GPUs Available: ", len(tf.config.list_physical_devices('GPU'))
     # print(available_GPU)
-    info_GPU = tf.config.list_physical_devices()
+    info_GPU = tf.config.list_physical_devices('GPU')
     # print(info_GPU)
+    if info_GPU:
+        try:
+            for gpu in info_GPU:
+                tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError as e:
+            print(e)
+            
 
-    # LeNet - 5 modified for 62 outputs
     model = models.Sequential()
-    model.add(layers.Input(shape=(28, 28, 1)))
-    model.add(layers.Conv2D(filters=32, kernel_size=(5, 5), padding='same', activation='relu'))
-    model.add(layers.MaxPooling2D(strides=2))
-    model.add(layers.Conv2D(filters=48, kernel_size=(5, 5), padding='valid', activation='relu')) 
-    model.add(layers.MaxPooling2D(strides=2))
-    model.add(layers.Flatten())
-    model.add(layers.Dense(256, activation='relu'))
-    model.add(layers.Dense(84, activation='relu'))
-    model.add(layers.Dense(62, activation='softmax'))
-
-    # model.build()
-    # Show composition of model
-    # model.summary()
 
     # Main Loop
     while (True):
@@ -287,13 +297,12 @@ if __name__ == '__main__':
         if user_input.upper() == 'T':
             default = input("(D)efault or (C)ustom?: ")
             if default.upper() == 'D':
-                round = 1
+                round = 4
                 epoch = 60
                 sleep = 30
                 filename_model = 'emnist_model.keras'
                 filenmae_weights = 'emnist_model.weights.h5'
                 train_model(model, round, epoch, sleep, filename_model, filenmae_weights)
-                break
             elif default.upper() == 'C':
                 round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
                 # epoch = int(input("Epochs (50 epochs = ~30min): "))
@@ -302,7 +311,6 @@ if __name__ == '__main__':
                 filename_model = input("Model Filename (Create new if empty): ")
                 filename_weights = input("Weights Filename (Empty if none): ")
                 train_model(model, round, epoch, sleep, filename_model, filename_weights)
-                break
             else:
                 print("Invalid train input")
         elif user_input.upper() == 'E':
