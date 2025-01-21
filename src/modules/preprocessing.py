@@ -81,10 +81,18 @@ def highlightBoundary(input: MatLike) -> MatLike:
     ''' Removes any background apart from the medium where the the text is located'''
     flipped = flipImage(input)
     shaded = cv2.cvtColor(flipped, cv2.COLOR_BGR2GRAY)
+    thresh = cv2.threshold(shaded, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    contours, _ = cv2.findContours(shaded, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 
-    cv2.drawContours(shaded, contours, -1, (100, 100, 100), 10)
+    # for ix in range(len(contours)):
+    #     print("Contour: ", ix)
+    #     print(contours[ix])
+    #     print(cv2.contourArea(contours[ix]))
+    #     cv2.drawContours(shaded, contours, ix, (255, 255, 255), 1)
+
+    # cv2.drawContours(shaded, contours, -1, (100, 100, 100), 10)
 
     return flipImage(GRAYToBGR(shaded))
 
@@ -118,14 +126,14 @@ def highlightText(input: MatLike) -> MatLike:
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
     dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.DILATE_ITER)
-
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    # Remove contours that are too small to be text
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         ar = w / float(h)
-        if ar < 5:
+        if ar < preprocess_config.ASPECT_RATIO:
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
 
     return blurImage(flipImage(cv2.bitwise_and(dilate, mask)), 0.5) # Change blur after text extraction to be 0.5
@@ -141,11 +149,11 @@ def preprocessImage(input: MatLike) -> MatLike:
     blurred = blurImage(scaled)
 
     # Exclude everything else except the region of the note
-    note = highlightBoundary(blurred)
+    # note = highlightBoundary(blurred)
 
-    return note
+    # return note
     # Exclude everything else except the actual text that make up the note
-    result = highlightText(note)
+    result = highlightText(blurred)
 
     return result
 
@@ -167,69 +175,69 @@ if __name__ == "__main__":
     print("Complete preprocess module")
 
 
-# # Check if the image is loaded
-# if image is None:
-#     raise FileNotFoundError("Image not loaded. Ensure 'black_sampel.jpg' exists in the same directory as the script.")
+# # # Check if the image is loaded
+# # if image is None:
+# #     raise FileNotFoundError("Image not loaded. Ensure 'black_sampel.jpg' exists in the same directory as the script.")
 
-image = cv2.imread('src/images/black_sample.jpg')
-# Convert BGR image to RGB
-image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+# image = cv2.imread('src/images/black_sample.jpg')
+# # Convert BGR image to RGB
+# image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-# Convert the image to grayscale
-image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# # Convert the image to grayscale
+# image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# Define the scale factors
-scale_factor_1 = 3.0  # Increase size
-scale_factor_2 = 1/3.0  # Decrease size
+# # Define the scale factors
+# scale_factor_1 = 3.0  # Increase size
+# scale_factor_2 = 1/3.0  # Decrease size
 
-# Get the original image dimensions
-height, width = image_rgb.shape[:2]
+# # Get the original image dimensions
+# height, width = image_rgb.shape[:2]
 
-# Resize for zoomed image
-new_height = int(height * scale_factor_1)
-new_width = int(width * scale_factor_1)
-zoomed_image = cv2.resize(image_rgb, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+# # Resize for zoomed image
+# new_height = int(height * scale_factor_1)
+# new_width = int(width * scale_factor_1)
+# zoomed_image = cv2.resize(image_rgb, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
 
-# Resize for scaled image
-new_height1 = int(height * scale_factor_2)
-new_width1 = int(width * scale_factor_2)
-scaled_image = cv2.resize(image_rgb, (new_width1, new_height1), interpolation=cv2.INTER_AREA)
+# # Resize for scaled image
+# new_height1 = int(height * scale_factor_2)
+# new_width1 = int(width * scale_factor_2)
+# scaled_image = cv2.resize(image_rgb, (new_width1, new_height1), interpolation=cv2.INTER_AREA)
 
-# Convert the image to grayscale
-image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+# # Convert the image to grayscale
+# image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-# Define the scale factors
-scale_factor_1 = 3.0  # Increase size
-scale_factor_2 = 1/3.0  # Decrease size
+# # Define the scale factors
+# scale_factor_1 = 3.0  # Increase size
+# scale_factor_2 = 1/3.0  # Decrease size
 
-# Get the original image dimensions
+# # Get the original image dimensions
 
-# Create subplots
-fig, axs = plt.subplots(1, 4, figsize=(15, 4))
+# # Create subplots
+# fig, axs = plt.subplots(1, 4, figsize=(15, 4))
 
 
-# SHOWING STEPS
-# Plot the original image
-axs[0].imshow(image_rgb)
-axs[0].set_title(f'Original Image\nShape: {image_rgb.shape}')
+# # SHOWING STEPS
+# # Plot the original image
+# axs[0].imshow(image_rgb)
+# axs[0].set_title(f'Original Image\nShape: {image_rgb.shape}')
 
-# Plot the grayscale image
-axs[1].imshow(image_gray, cmap='gray')  # Specify cmap for grayscale
-axs[1].set_title(f'Grayscale Image\nShape: {image_gray.shape}')
+# # Plot the grayscale image
+# axs[1].imshow(image_gray, cmap='gray')  # Specify cmap for grayscale
+# axs[1].set_title(f'Grayscale Image\nShape: {image_gray.shape}')
 
-# Plot the zoomed-in image
-axs[2].imshow(zoomed_image)
-axs[2].set_title(f'Zoomed Image\nShape: {zoomed_image.shape}')
+# # Plot the zoomed-in image
+# axs[2].imshow(zoomed_image)
+# axs[2].set_title(f'Zoomed Image\nShape: {zoomed_image.shape}')
 
-# Plot the scaled-down image
-axs[3].imshow(scaled_image)
-axs[3].set_title(f'Scaled Image\nShape: {scaled_image.shape}')
+# # Plot the scaled-down image
+# axs[3].imshow(scaled_image)
+# axs[3].set_title(f'Scaled Image\nShape: {scaled_image.shape}')
 
-# Remove axis ticks
-for ax in axs:
-    ax.set_xticks([])
-    ax.set_yticks([])
+# # Remove axis ticks
+# for ax in axs:
+#     ax.set_xticks([])
+#     ax.set_yticks([])
 
-# Display the images
-plt.tight_layout()
-plt.show()
+# # Display the images
+# plt.tight_layout()
+# plt.show()
