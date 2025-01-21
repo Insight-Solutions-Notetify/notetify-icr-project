@@ -21,6 +21,7 @@ import tensorflow as tf
 from keras import layers, models, callbacks, optimizers
 from timeit import default_timer as timer
 
+import asyncio
 
 from delay_callback import EpochDelayCallback
 
@@ -47,7 +48,7 @@ class EmnistDataloader(object):
         self.test_images_filepath = test_images_filepath
         self.test_labels_filepath = test_labels_filepath
     
-    def read_images_labels(self, images_filepath, labels_filepath):        
+    async def read_images_labels(self, images_filepath, labels_filepath):        
         labels = []
 
         # Get labels for each datapoint
@@ -79,10 +80,10 @@ class EmnistDataloader(object):
          
         return np.array(images), np.array(labels)
             
-    def load_data(self):
-        x_train, y_train = self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
-        x_test, y_test = self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
-        return (x_train, y_train),(x_test, y_test) 
+    async def load_data(self):
+        x_train, y_train = await self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
+        x_test, y_test = await self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
+        return [x_train, y_train, x_test, y_test] 
     
 #
 # Set file paths based on added EMNIST Datasets
@@ -143,7 +144,7 @@ def sample_emnist():
 
 ### LeNet with Keras and TensorFlow ###
 # Training module
-def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, filename_weights=None):
+def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filename_model=None, filename_weights=None):
     if filename_model:
         if os.path.exists(f'training/{filename_model}'):
             print("Loading from existing")
@@ -204,9 +205,9 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy']) # Check what other metrics can be analyzed)
 
-        history = model.fit(x_train, y_train,
+        history = model.fit(dataset[0], dataset[1],
                             epochs=epoch, # 100 epochs is 1 hour with RTX 4080
-                            validation_data=(x_test, y_test),
+                            validation_data=(dataset[2], dataset[3]),
                             # batch_size=32,
                             callbacks=[early_stopping, cp_callback, reduce_lr, EpochDelayCallback(delay_seconds=sleep)],
                             verbose=1)
@@ -214,7 +215,7 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
 
         print(f"Completed round {round + 1}. Results: ")
         # print(history.history)
-        evaluation = model.evaluate(x_test, y_test)
+        evaluation = model.evaluate(dataset[2], dataset[3])
         print("test loss, test acc:", evaluation)
 
         results = f"Round {round + 1} - test loss, test acc: {evaluation}"
@@ -235,7 +236,7 @@ def train_model(model=None, rounds=10, epoch=60, sleep=30, filename_model=None, 
 
 
 # Testing module
-def test_model(model=None, start_index=0, size=0, filename_model=None, filename_weights=None):
+def test_model(model=None, dataset=None, start_index=0, size=0, filename_model=None, filename_weights=None):
     if not os.path.exists(f'training/{filename_model}'):
         print("Can't evaluate without saved model")
     else:
@@ -249,11 +250,11 @@ def test_model(model=None, start_index=0, size=0, filename_model=None, filename_
             # model.load_weights('training/model_weights.h5')
 
     if size == 0:
-        model.evaluate(x_test, y_test) # Evaluate the model on the test data
+        model.evaluate(dataset[2], dataset[3]) # Evaluate the model on the test data
     else:
     
-        x_rand_test = x_test[start_index:start_index + size]
-        y_rand_test = y_test[start_index:start_index + size]
+        x_rand_test = dataset[2][start_index:start_index + size]
+        y_rand_test = dataset[3][start_index:start_index + size]
         y_rand_test = [character_by_index[ix] for ix in y_rand_test]
         
         result = model.predict(x_rand_test, batch_size=32)
@@ -269,9 +270,10 @@ def test_model(model=None, start_index=0, size=0, filename_model=None, filename_
         
         print(f"Accuracy: {correct/size}")
 
-if __name__ == '__main__':
+
+async def main():
     emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
-    (x_train, y_train), (x_test, y_test) = emnist_dataloader.load_data()
+    dataset = asyncio.create_task(emnist_dataloader.load_data()) # Dataset consist of [x_train, y_train, x_test, y_test] (x - images, y - labels)
     # sample_emnist()
 
     # Check for GPU available
@@ -301,8 +303,11 @@ if __name__ == '__main__':
                 epoch = 60
                 sleep = 30
                 filename_model = 'emnist_model.keras'
-                filenmae_weights = 'emnist_model.weights.h5'
-                train_model(model, round, epoch, sleep, filename_model, filenmae_weights)
+                filename_weights = 'emnist_model.weights.h5'
+                print(f"Starting training for {round} rounds and {epoch} epochs. Sleep: {sleep} secs. Saving to file: {filename_model} & {filename_weights}.")
+                await dataset
+                dataset = dataset.result()
+                train_model(model, dataset, round, epoch, sleep, filename_model, filename_weights)
             elif default.upper() == 'C':
                 round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
                 # epoch = int(input("Epochs (50 epochs = ~30min): "))
@@ -310,12 +315,15 @@ if __name__ == '__main__':
                 sleep = int(input("Sleep Time Between Epochs(sec): "))
                 filename_model = input("Model Filename (Create new if empty): ")
                 filename_weights = input("Weights Filename (Empty if none): ")
-                train_model(model, round, epoch, sleep, filename_model, filename_weights)
+                print(f"Starting training for {round} rounds and {epoch} epochs. Sleep: {sleep} secs. Saving to file: {filename_model} & {filename_weights}.")
+                await dataset
+                dataset = dataset.result()
+                train_model(model, dataset, round, epoch, sleep, filename_model, filename_weights)
             else:
                 print("Invalid train input")
         elif user_input.upper() == 'E':
             start_index = 0
-            print("Total size of test images ", len(x_test))
+            print("Total size of test images ", len(dataset[2]))
             size = int(input("Size of input batch(0 for all):"))
             if not size == 0:
                 start_index = int(input("Starting index of test_images:"))
@@ -323,10 +331,13 @@ if __name__ == '__main__':
             filename_weights = 'emnist_model.weights.h5'
             # filename_model = input("Model Filename: ")
             # filename_weights = input("Weights Filename: ")
-            if start_index + size > len(x_test):
+            if start_index + size > len(dataset[2]):
                 print("Invalid combination of size and start index")
             else:
-                test_model(model, start_index, size, filename_model, filename_weights)
+                print(f"Starting training for {round} rounds and {epoch} epochs. Sleep: {sleep} secs. Saving to file: {filename_model} & {filename_weights}.")
+                await dataset
+                dataset = dataset.result()
+                test_model(model, dataset, start_index, size, filename_model, filename_weights)
         elif user_input.upper() == 'S':
             sample_emnist()
         elif user_input.upper() == 'Q':
@@ -335,3 +346,7 @@ if __name__ == '__main__':
             print("Invalid input try another")
 
         print("Leaving program")
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
