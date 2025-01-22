@@ -6,6 +6,10 @@ class PreprocessConfig:
     BRIGHTNESS = 0.0
     CONTRAST = 1
 
+    # Text Detection
+    LOWER_RANGE = 0
+    UPPER_RANGE = 256
+
     # Image Rescaling Parameters
     ZOOM_FACTOR = 3.0
     RESIZED_FACTOR = 1/3.0

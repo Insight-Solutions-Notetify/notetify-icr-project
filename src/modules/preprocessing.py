@@ -85,12 +85,6 @@ def rangeOfText(input: MatLike) -> Set:
     text_range = set()
     foreground_range = set()
 
-    for i in range(len(hist)):
-        if hist[i] > preprocess_config.TEXT_THRESHOLD:
-            text_range.add(i)
-        else:
-            foreground_range.add(i)
-
     return (text_range, foreground_range)
 
 
@@ -103,6 +97,7 @@ def highlightBoundary(input: MatLike, text_range: Set, foreground_range: Set) ->
     # shaded = BGRToShades(input)
     # analyzed, text_range, foreground_range = rangeOfText(shaded)
     # reverted = flipImage(GRAYToBGR(analyzed))
+    
 
     flipped = flipImage(input)
     shaded = cv2.cvtColor(flipped, cv2.COLOR_BGR2GRAY)
@@ -169,8 +164,9 @@ def preprocessImage(input: MatLike) -> MatLike:
     blurred = blurImage(scaled)
 
     # Histogram analysis to determine the range of text colors
-    text_range, foreground_range = rangeOfText(blurred)
+    (text_range, foreground_range) = rangeOfText(blurred)
 
+    print(text_range)
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred, text_range, foreground_range)
 
@@ -184,7 +180,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/images/IMG_5565.jpg")
+    sample_image = cv2.imread("src/images/test_sample_2.jpg")
     # cv2.imshow("Original", sample_image)
 
     result = preprocessImage(sample_image)
