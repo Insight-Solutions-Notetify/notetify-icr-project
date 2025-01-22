@@ -22,6 +22,8 @@ from keras import layers, models, callbacks, optimizers
 from timeit import default_timer as timer
 
 import asyncio
+from alive_progress import alive_bar;
+import time
 
 from delay_callback import EpochDelayCallback
 
@@ -74,20 +76,30 @@ class EmnistDataloader(object):
         images = [] # Images
 
         # Makes a list of 2D arrays(images) rows x cols with 0 value
-        for i in range(size):
-            images.append([0] * rows * cols)
+        print("Initializing images...")
+        with alive_bar(size) as bar:
+            for i in range(size):
+                images.append([0] * rows * cols)
+                bar()
+        # images.append([0] * rows * cols)
 
         # Fill the images with the data read from the images file
-        for i in range(size):
-            img = np.array(image_data[i * rows * cols:(i + 1) * rows * cols]) # Get data of image using slicing operations
-            img = img.reshape(28, 28) # 28 x 28 format size
-            img = img.transpose() # Flip horizontally and rotate 90 degrees counter-clockwise.
-            images[i][:] = img # Replace the empty 2D array with the actual image data
+        print("Loading images...")
+        with alive_bar(size) as bar:
+            for i in range(size):
+                img = np.array(image_data[i * rows * cols:(i + 1) * rows * cols]) # Get data of image using slicing operations
+                img = img.reshape(28, 28) # 28 x 28 format size
+                img = img.transpose() # Flip horizontally and rotate 90 degrees counter-clockwise.
+                images[i][:] = img # Replace the empty 2D array with the actual image data
+                bar()
          
         return np.array(images), np.array(labels)
             
     async def load_data(self):
+        print("Loading training data...")
         x_train, y_train = await self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
+
+        print("Loading test data...")
         x_test, y_test = await self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
         return [x_train, y_train, x_test, y_test] 
     
