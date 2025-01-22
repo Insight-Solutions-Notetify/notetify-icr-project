@@ -324,16 +324,18 @@ async def main():
                 filename_weights = input("Weights Filename (Empty if none): ")
                 print(f"Starting training for {round} rounds and {epoch} epochs. Sleep: {sleep} secs. Saving to file: {filename_model} & {filename_weights}.")
                 print("Loading dataset...")
-                await dataset
-                dataset = dataset.result()[0]
+                if type(dataset) != type([]):
+                    await dataset
+                    dataset = dataset.result()[0]
                 train_model(model, dataset, round, epoch, sleep, filename_model, filename_weights)
             else:
                 print("Invalid train input")
         elif user_input.upper() == 'E':
             start_index = 0
             print("Retrieving test images and labels...")
-            await dataset
-            dataset = dataset.result()[0]
+            if type(dataset) != type([]):
+                await dataset
+                dataset = dataset.result()[0]
             print("Total size of test images ", len(dataset[2]))
             size = int(input("Size of input batch(0 for all):"))
             if not size == 0:
@@ -349,8 +351,9 @@ async def main():
                 test_model(model, dataset, start_index, size, filename_model, filename_weights)
         elif user_input.upper() == 'S':
             print("Loading dataset")
-            await dataset
-            dataset = dataset.result()[0]
+            if type(dataset) != type([]):
+                await dataset
+                dataset = dataset.result()[0]
             sample_emnist(dataset)
         elif user_input.upper() == 'Q':
             break
