@@ -85,6 +85,12 @@ def rangeOfText(input: MatLike) -> Set:
     text_range = set()
     foreground_range = set()
 
+    for i in range(len(hist)):
+        if hist[i] > preprocess_config.TEXT_THRESHOLD:
+            text_range.add(i)
+        else:
+            foreground_range.add(i)
+
     return (text_range, foreground_range)
 
 
