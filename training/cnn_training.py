@@ -26,8 +26,14 @@ import asyncio
 from delay_callback import EpochDelayCallback
 
 # Download the dataset from Kaggle
-path = kagglehub.dataset_download('crawford/emnist')
-# print("Path to the downloaded dataset: ", path)
+path = '/home/louisoporto/.cache/kagglehub/datasets/crawford/emnist/versions/3'
+if not os.path.exists(path):
+    try:
+        path = kagglehub.dataset_download('crawford/emnist')
+    except Exception as e:
+        print("Failed to download dataset from Kaggle: ", e)
+
+print("Path to the downloaded dataset: ", path)
 
 # Set working directory to current folder
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -126,18 +132,18 @@ def show_images(images, title_texts):
 #
 # Show some random training and test images 
 #
-def sample_emnist():
+def sample_emnist(dataset = None):
     images_2_show = []
     titles_2_show = []
     for i in range(0, 9):
         r = random.randint(1, 60000)
-        images_2_show.append(x_train[r])
-        titles_2_show.append('training image [' + str(r) + '] = ' + character_by_index[y_train[r]])    
+        images_2_show.append(dataset[0][r])
+        titles_2_show.append('training image [' + str(r) + '] = ' + character_by_index[dataset[1][r]])    
 
     for i in range(0, 3):
         r = random.randint(1, 10000)
-        images_2_show.append(x_test[r])        
-        titles_2_show.append('test image [' + str(r) + '] = ' + character_by_index[y_test[r]])    
+        images_2_show.append(dataset[2][r])        
+        titles_2_show.append('test image [' + str(r) + '] = ' + character_by_index[dataset[3][r]])    
 
     show_images(images_2_show, titles_2_show)
 
@@ -273,7 +279,7 @@ def test_model(model=None, dataset=None, start_index=0, size=0, filename_model=N
 
 async def main():
     emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
-    dataset = asyncio.create_task(emnist_dataloader.load_data()) # Dataset consist of [x_train, y_train, x_test, y_test] (x - images, y - labels)
+    dataset = asyncio.gather(emnist_dataloader.load_data()) # Dataset consist of [x_train, y_train, x_test, y_test] (x - images, y - labels)
     # sample_emnist()
 
     # Check for GPU available
@@ -305,8 +311,9 @@ async def main():
                 filename_model = 'emnist_model.keras'
                 filename_weights = 'emnist_model.weights.h5'
                 print(f"Starting training for {round} rounds and {epoch} epochs. Sleep: {sleep} secs. Saving to file: {filename_model} & {filename_weights}.")
+                print("Loading dataset...")
                 await dataset
-                dataset = dataset.result()
+                dataset = dataset.result()[0]
                 train_model(model, dataset, round, epoch, sleep, filename_model, filename_weights)
             elif default.upper() == 'C':
                 round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
@@ -316,13 +323,17 @@ async def main():
                 filename_model = input("Model Filename (Create new if empty): ")
                 filename_weights = input("Weights Filename (Empty if none): ")
                 print(f"Starting training for {round} rounds and {epoch} epochs. Sleep: {sleep} secs. Saving to file: {filename_model} & {filename_weights}.")
+                print("Loading dataset...")
                 await dataset
-                dataset = dataset.result()
+                dataset = dataset.result()[0]
                 train_model(model, dataset, round, epoch, sleep, filename_model, filename_weights)
             else:
                 print("Invalid train input")
         elif user_input.upper() == 'E':
             start_index = 0
+            print("Retrieving test images and labels...")
+            await dataset
+            dataset = dataset.result()[0]
             print("Total size of test images ", len(dataset[2]))
             size = int(input("Size of input batch(0 for all):"))
             if not size == 0:
@@ -334,12 +345,13 @@ async def main():
             if start_index + size > len(dataset[2]):
                 print("Invalid combination of size and start index")
             else:
-                print(f"Starting training for {round} rounds and {epoch} epochs. Sleep: {sleep} secs. Saving to file: {filename_model} & {filename_weights}.")
-                await dataset
-                dataset = dataset.result()
+                print(f"Testing model with {size} images starting from index {start_index}")
                 test_model(model, dataset, start_index, size, filename_model, filename_weights)
         elif user_input.upper() == 'S':
-            sample_emnist()
+            print("Loading dataset")
+            await dataset
+            dataset = dataset.result()[0]
+            sample_emnist(dataset)
         elif user_input.upper() == 'Q':
             break
         else:
