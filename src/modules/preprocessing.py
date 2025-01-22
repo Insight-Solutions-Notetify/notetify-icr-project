@@ -77,7 +77,24 @@ def rescaleImage(input: MatLike) -> MatLike:
     
     return result
 
-def highlightBoundary(input: MatLike) -> MatLike:
+def rangeOfText(input: MatLike) -> Set:
+    ''' Analyze the range of text colors in the image '''
+    hist = cv2.calcHist([input], [0], None, [256], [0, 256])
+    hist = hist[preprocess_config.LOWER_RANGE:preprocess_config.UPPER_RANGE]
+
+    text_range = set()
+    foreground_range = set()
+
+    for i in range(len(hist)):
+        if hist[i] > preprocess_config.TEXT_THRESHOLD:
+            text_range.add(i)
+        else:
+            foreground_range.add(i)
+
+    return (text_range, foreground_range)
+
+
+def highlightBoundary(input: MatLike, text_range: Set, foreground_range: Set) -> MatLike:
     ''' Removes any background apart from the medium where the the text is located'''
     x_box, y_box = 0, 0
     min_width, min_height = 0, 0
@@ -110,7 +127,7 @@ def highlightBoundary(input: MatLike) -> MatLike:
     result = shaded[y_box:y_box + min_height, x_box:x_box + min_width]
     return flipImage(GRAYToBGR(shaded))
 
-def highlightText(input: MatLike) -> MatLike:
+def highlightText(input: MatLike, text_range: Set, foreground_range: Set) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
 
     # Need to implement range of text colors to dynamically handle a wide variety of light conditions and color ranges of text and background
@@ -151,12 +168,15 @@ def preprocessImage(input: MatLike) -> MatLike:
     scaled = rescaleImage(weighted)
     blurred = blurImage(scaled)
 
+    # Histogram analysis to determine the range of text colors
+    text_range, foreground_range = rangeOfText(blurred)
+
     # Exclude everything else except the region of the note
-    note = highlightBoundary(blurred)
+    note = highlightBoundary(blurred, text_range, foreground_range)
 
     return note
     # Exclude everything else except the actual text that make up the note
-    result = highlightText(note)
+    result = highlightText(note, text_range, foreground_range)
 
     return result
 
