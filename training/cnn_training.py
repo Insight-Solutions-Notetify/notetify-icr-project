@@ -218,7 +218,7 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
     for round in range(rounds):
         # Reset optimzier learning rate for fresh lense on sample data
         adam.learning_rate = 5e-4
-        print(adam._get_current_learning_rate())
+        # print(adam._get_current_learning_rate())
         model.compile(optimizer=adam,
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy']) # Check what other metrics can be analyzed)
