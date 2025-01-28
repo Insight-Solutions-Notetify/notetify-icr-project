@@ -178,12 +178,16 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
             print("No weights file provided")
     else:
         print("Creating new model")
+        data_augmentation = models.Sequential([
+        layers.RandomRotation(1./9),
+        layers.RandomTranslation(0.2, 0.2),
+        layers.RandomShear(0.2),
+        layers.RandomZoom(0.2),
+        ])
         # LeNet - 5 modified for 62 outputs
         model = models.Sequential()
         model.add(layers.Input(shape=(28, 28, 1)))
-        model.add(layers.RandomRotation(1./9))
-        model.add(layers.RandomTranslation(0.2, 0.2))
-        model.add(layers.RandomZoom(0.2))
+        model.add(data_augmentation)
         model.add(layers.Conv2D(filters=32, kernel_size=(5, 5), padding='same', activation='relu'))
         model.add(layers.MaxPooling2D(strides=2))
         model.add(layers.Conv2D(filters=48, kernel_size=(5, 5), padding='valid', activation='relu')) 
