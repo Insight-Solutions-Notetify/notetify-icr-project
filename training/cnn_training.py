@@ -181,7 +181,7 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
         data_augmentation = models.Sequential([
         layers.RandomRotation(1./9),
         layers.RandomTranslation(0.2, 0.2),
-        layers.RandomShear(0.2),
+        layers.RandomShear((0, 0.2), (0, 0.2)),
         layers.RandomZoom(0.2),
         ])
         # LeNet - 5 modified for 62 outputs
