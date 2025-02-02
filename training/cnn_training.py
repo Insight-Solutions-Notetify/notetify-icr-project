@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 
 from keras import layers, models, callbacks, optimizers
+from keras.api.layers import RandomZoom, Rescaling, RandomFlip, RandomRotation, RandomTranslation
 from timeit import default_timer as timer
 
 import asyncio
@@ -148,7 +149,7 @@ def sample_emnist(dataset = None):
     images_2_show = []
     titles_2_show = []
     for i in range(0, 9):
-        r = random.randint(1, 60000)
+        r = random.randint(1, 10000)
         images_2_show.append(dataset[0][r])
         titles_2_show.append('training image [' + str(r) + '] = ' + character_by_index[dataset[1][r]])    
 
@@ -177,9 +178,16 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
             print("No weights file provided")
     else:
         print("Creating new model")
+        data_augmentation = models.Sequential([
+        layers.RandomRotation(1./9),
+        layers.RandomTranslation(0.2, 0.2),
+        layers.RandomShear((0, 0.2), (0, 0.2)),
+        layers.RandomZoom(0.2),
+        ])
         # LeNet - 5 modified for 62 outputs
         model = models.Sequential()
         model.add(layers.Input(shape=(28, 28, 1)))
+        model.add(data_augmentation)
         model.add(layers.Conv2D(filters=32, kernel_size=(5, 5), padding='same', activation='relu'))
         model.add(layers.MaxPooling2D(strides=2))
         model.add(layers.Conv2D(filters=48, kernel_size=(5, 5), padding='valid', activation='relu')) 
