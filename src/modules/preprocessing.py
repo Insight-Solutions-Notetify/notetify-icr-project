@@ -3,8 +3,10 @@ import pytesseract
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import sys
 from typing import List
+import sys
+from typing import Set
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
 os.chdir(project_root)
