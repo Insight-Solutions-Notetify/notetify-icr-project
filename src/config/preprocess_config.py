@@ -3,6 +3,9 @@ import numpy as np
 class PreprocessConfig:
 
     # Image Rescaling Parameters
+    CONTRAST = 1  # Adjust this value as needed
+    BRIGHTNESS = 10
+    MAX_WIDTH = 800
     ZOOM_FACTOR = 3.0
     RESIZED_FACOTR = 1/3.0
 
