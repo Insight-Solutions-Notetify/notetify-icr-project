@@ -209,8 +209,9 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy']) # Check what other metrics can be analyzed
     
+    filepath = 'training/emnist_model_loss{val_loss:.2f}.weights.h5'
     checkpoint_path = "training/emnist_model.weights.h5"
-    cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_path,
+    cp_callback = callbacks.ModelCheckpoint(filepath=filepath,
                                             save_weights_only=True,
                                             save_best_only=True,
                                             verbose=1)
@@ -242,7 +243,7 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
         print(f"Completed round {round + 1}. Results: ")
         # print(history.history)
         evaluation = model.evaluate(dataset[2], dataset[3])
-        print("test loss, test acc:", evaluation)
+        print(f"test loss: {evaluation[0]:.04f}, test acc: {evaluation[1]:.04f}")
 
         results = f"Round {round + 1} - test loss, test acc: {evaluation}"
         round_results.append(results)
