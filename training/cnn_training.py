@@ -28,6 +28,8 @@ import time
 
 from delay_callback import EpochDelayCallback
 
+### NS4-19-dataset-handler
+# Check that the handler properly extracts the EMNIST dataset from kagglehub. The class EmnistDataloader and the initial file setup consist of all the dataset setup.
 # Download the dataset from Kaggle
 path = '/home/louisoporto/.cache/kagglehub/datasets/crawford/emnist/versions/3'
 if not os.path.exists(path):
