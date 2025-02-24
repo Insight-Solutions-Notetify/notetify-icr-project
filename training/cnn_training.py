@@ -202,7 +202,8 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
     
     round_results = []
     start = timer()
-
+    ### NS4-25-adjust-hyperparameters
+    # We already picked certain parameters, but we adjust based on evalution to make final adjustments that will improve the model.
     # Check if recompiling on each session is neccessary or loss in performance
     adam = optimizers.Adam(learning_rate=5e-4)
     model.compile(optimizer=adam,
