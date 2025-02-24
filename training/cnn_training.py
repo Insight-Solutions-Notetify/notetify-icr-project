@@ -203,6 +203,8 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
     round_results = []
     start = timer()
 
+    ### NS4-21-adjust-training
+    # Learning rate, callbacks, early stopping and fit parameters for optimal training
     # Check if recompiling on each session is neccessary or loss in performance
     adam = optimizers.Adam(learning_rate=5e-4)
     model.compile(optimizer=adam,
