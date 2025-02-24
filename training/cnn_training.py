@@ -261,7 +261,8 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
     for result in round_results:
         print(result)
 
-
+### NS4-24-evaluation-function
+# Initial design of testing function for this model. Improvements are needed
 # Testing module
 def test_model(model=None, dataset=None, start_index=0, size=0, filename_model=None, filename_weights=None):
     if not os.path.exists(f'training/{filename_model}'):
