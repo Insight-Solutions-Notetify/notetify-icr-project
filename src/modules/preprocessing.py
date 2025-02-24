@@ -187,6 +187,9 @@ if __name__ == "__main__":
     print("Testing preprocessing module")
     
     sample_image = cv2.imread("src/images/test_sample_2.jpg")
+    # hist = cv2.calcHist([sample_image], [0], None, [256], [0, 256])
+    # plt.plot(hist)
+    # plt.show()
     # cv2.imshow("Original", sample_image)
 
     result = preprocessImage(sample_image)
