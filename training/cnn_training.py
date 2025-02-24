@@ -177,6 +177,9 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
         else:
             print("No weights file provided")
     else:
+
+        ### NS4-20-CNN-sequential-layer
+        ### Review the composition of the this layer sequence of the CNN model. Based on the LENET-5 model and additional use of data augmentation available during training and excluded during testing
         print("Creating new model")
         data_augmentation = models.Sequential([
         layers.RandomRotation(1./9),
