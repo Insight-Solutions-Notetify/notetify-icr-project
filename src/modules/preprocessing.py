@@ -46,6 +46,11 @@ def BGRToHSV(input: MatLike) -> MatLike:
     hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
     return hsv
 
+def BGRToRGB(input: MatLike) -> MatLike:
+    ''' Convert BGR to RGB '''
+    rgb = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
+    return rgb
+
 def flipImage(input: MatLike) -> MatLike:
     ''' Inverse of inputted image '''
     return 255 - input
@@ -59,11 +64,6 @@ def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike
     gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), sigma)
     return gaussian
 
-def rangeOfText(input: MatLike) -> Set:
-    hist = cv2.calcHist(input, [5], None, [32], [0, 256])
-    
-    return (input, (0, 100), (0, 100))
-
 def rescaleImage(input: MatLike) -> MatLike:
     ''' Rescale images down to a standard acceptable for input '''
     img_width, _, _  = input.shape
@@ -76,6 +76,19 @@ def rescaleImage(input: MatLike) -> MatLike:
     result = cv2.resize(input,(0, 0), fx=IMG_RATIO, fy=IMG_RATIO)
     
     return result
+
+def findColorRange(input: MatLike) -> Set:
+	
+	image = BGRToRGB(input)
+    
+	pixels = image.reshape(-1, 3)
+	
+	print(pixels)
+    
+	return image
+
+	hist = cv2.calcHist(input, [5], None, [32], [0, 256])
+    # return (input, (0, 100), (0, 100))
 
 def rangeOfText(input: MatLike) -> Set:
     ''' Analyze the range of text colors in the image '''
@@ -168,6 +181,10 @@ def preprocessImage(input: MatLike) -> MatLike:
     weighted = contrastImage(input)
     scaled = rescaleImage(weighted)
     blurred = blurImage(scaled)
+    
+    colorRange = findColorRange(blurred)
+
+    return colorRange
 
     # Histogram analysis to determine the range of text colors
     (text_range, foreground_range) = rangeOfText(blurred)
