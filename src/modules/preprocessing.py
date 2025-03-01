@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import sys
 from typing import Set
+from collections import Counter
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
@@ -77,18 +78,46 @@ def rescaleImage(input: MatLike) -> MatLike:
     
     return result
 
-def findColorRange(input: MatLike) -> Set:
-	
-	image = BGRToRGB(input)
+def findColorRange(input: MatLike, k = 2) -> Set:
     
-	pixels = image.reshape(-1, 3)
-	
-	print(pixels)
+    image = BGRToRGB(input)
     
-	return image
+    pixels = image.reshape(-1, 3)
 
-	hist = cv2.calcHist(input, [5], None, [32], [0, 256])
-    # return (input, (0, 100), (0, 100))
+    #K-Means Clustering
+    pixels = np.float32(pixels)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+    _, labels, center = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
+
+    # Counte each cluster's occurence
+    counts = Counter(labels.flatten())
+    sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+
+    # # Get two dominant colors
+    dominant_labels = [i for i, _ in sorted_counts]
+    cluster_pixels = {label: [] for label in dominant_labels}
+
+    # Assign pixels to their clusters
+    for pixel, label in zip(pixels, labels.flatten()):
+        cluster_pixels[label].append(pixel)
+
+    # Assign pixels to their clusters
+    color_ranges = {}
+    for label in dominant_labels:
+        cluster_array = np.array(cluster_pixels[label], dtype=np.uint8)
+        min_color = np.min(cluster_array, axis=0)
+        max_color = np.max(cluster_array, axis=0)
+        color_ranges[label] = (min_color.tolist(), max_color.tolist())
+
+
+    #Identify background as the most frequent cluster
+    background_label = dominant_labels[0]
+    text_label = dominant_labels[1]
+
+    background_range = color_ranges[background_label]
+    text_range = color_ranges[text_label]
+
+    return background_range, text_range
 
 def rangeOfText(input: MatLike) -> Set:
     ''' Analyze the range of text colors in the image '''
@@ -181,17 +210,15 @@ def preprocessImage(input: MatLike) -> MatLike:
     weighted = contrastImage(input)
     scaled = rescaleImage(weighted)
     blurred = blurImage(scaled)
-    
-    colorRange = findColorRange(blurred)
-
-    return colorRange
 
     # Histogram analysis to determine the range of text colors
-    (text_range, foreground_range) = rangeOfText(blurred)
+    (text_range, bg_range) = findColorRange(blurred)
 
-    print(text_range)
+    print(f"Text Color range (RGB): {text_range}")
+    print(f"Background Color Range (RGB): {bg_range}")
+
     # Exclude everything else except the region of the note
-    note = highlightBoundary(blurred, text_range, foreground_range)
+    note = highlightBoundary(blurred, text_range, bg_range)
 
     return note
     # Exclude everything else except the actual text that make up the note
@@ -203,7 +230,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/images/test_sample_2.jpg")
+    sample_image = cv2.imread("src/images/black_sample.jpg")
     # hist = cv2.calcHist([sample_image], [0], None, [256], [0, 256])
     # plt.plot(hist)
     # plt.show()
