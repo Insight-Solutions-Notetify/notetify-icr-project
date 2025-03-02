@@ -79,7 +79,7 @@ def rescaleImage(input: MatLike) -> MatLike:
     return result
 
 def findColorRange(input: MatLike, k = 2) -> Set:
-    
+    ''' Identify the color range for text and background by using k-clustering '''
     image = BGRToRGB(input)
     
     pixels = image.reshape(-1, 3)
@@ -88,8 +88,8 @@ def findColorRange(input: MatLike, k = 2) -> Set:
     pixels = np.float32(pixels)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
     _, labels, center = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
-
-    # Counte each cluster's occurence
+    
+    # Count each cluster's occurence
     counts = Counter(labels.flatten())
     sorted_counts = sorted(counts.items(), key=lambda x: x[1], reverse=True)
 
@@ -109,76 +109,77 @@ def findColorRange(input: MatLike, k = 2) -> Set:
         max_color = np.max(cluster_array, axis=0)
         color_ranges[label] = (min_color.tolist(), max_color.tolist())
 
-
     #Identify background as the most frequent cluster
     background_label = dominant_labels[0]
     text_label = dominant_labels[1]
 
-    background_range = color_ranges[background_label]
+    bg_range = color_ranges[background_label]
     text_range = color_ranges[text_label]
 
-    return background_range, text_range
+    # Convert this RGB range to GRAY range
+    text_range = [int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2]), int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2])]
+    bg_range = [int(0.114 * bg_range[0][0] + 0.587 * bg_range[0][1] + 0.299 * bg_range[0][2]), int(0.114 * bg_range[1][0] + 0.587 * bg_range[1][1] + 0.299 * bg_range[1][2])]
 
-def rangeOfText(input: MatLike) -> Set:
-    ''' Analyze the range of text colors in the image '''
-    hist = cv2.calcHist([input], [0], None, [256], [0, 256])
-    hist = hist[preprocess_config.LOWER_RANGE:preprocess_config.UPPER_RANGE]
+    return text_range, bg_range
 
-    text_range = set()
-    foreground_range = set()
-
-    for i in range(len(hist)):
-        if hist[i] > preprocess_config.TEXT_THRESHOLD:
-            text_range.add(i)
-        else:
-            foreground_range.add(i)
-
-    return (text_range, foreground_range)
-
-
-def highlightBoundary(input: MatLike, text_range: Set, foreground_range: Set) -> MatLike:
-    ''' Removes any background apart from the medium where the the text is located'''
-    x_box, y_box = 0, 0
-    min_width, min_height = 0, 0
-
-    # Need to implement range of text colors to dynamically handle a wide variety of light conditions and color ranges of text and background
-    # shaded = BGRToShades(input)
-    # analyzed, text_range, foreground_range = rangeOfText(shaded)
-    # reverted = flipImage(GRAYToBGR(analyzed))
-    
-
+def highlightBoundary(input: MatLike) -> MatLike:
+    ''' Removes any background apart from the medium where the text is located '''
     flipped = flipImage(input)
     shaded = cv2.cvtColor(flipped, cv2.COLOR_BGR2GRAY)
     thresh = cv2.threshold(shaded, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    # cnts = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 1))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
     dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    x_box, y_box, min_width, min_height = float('inf'), float('inf'), 0, 0
+
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
+        # Ignore small contours and contours that match the image size
+        print(f"Width: {w}, Height: {h}")
+        if w == shaded.shape[1] or h == shaded.shape[0]:
+            continue
         width_ratio = w / float(preprocess_config.MAX_WIDTH)
-        ar = w / float(h)
-        if width_ratio > 0.7:
-            cv2.drawContours(shaded, [c], -1, (0, 0, 0), -1)
-            min_width = max(min_width, w)
-            min_height = max(min_height, h)
-            x_box, y_box = max(x_box, x), max(y_box, y)
-    
-    result = shaded[y_box:y_box + min_height, x_box:x_box + min_width]
-    return flipImage(GRAYToBGR(shaded))
+        print(width_ratio)
+        if width_ratio > 0.001:
+            x_box = min(x_box, x)
+            y_box = min(y_box, y)
+            min_width = max(min_width, x + w)
+            min_height = max(min_height, y + h)
 
-def highlightText(input: MatLike, text_range: Set, foreground_range: Set) -> MatLike:
+    print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
+    if x_box == float('inf') or y_box == float('inf'):
+        return input
+
+    cropped = input[y_box:min_height, x_box:min_width]
+    return cropped
+
+def highlightText(input: MatLike, text_range: list, bg_range: list) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
+    text_region = np.array([[[text_range[0], text_range[0], text_range[0]], [text_range[1], text_range[1], text_range[1]]]]).astype(np.uint8)
+    bg_region = np.array([[[bg_range[0], bg_range[0], bg_range[0]], [bg_range[1], bg_range[1], bg_range[1]]]]).astype(np.uint8)
 
-    # Need to implement range of text colors to dynamically handle a wide variety of light conditions and color ranges of text and background
-    # Need to implement range of text to
-    # shaded = BGRToShades(input)
-    # analyzed, text_range, foreground_range = rangeOfText(shaded)
-    # reverted = flipImage(GRAYToBGR(analyzed))
-    hsv = BGRToHSV(input)
+    try:
+        hsv_text_range = BGRToHSV(text_region)
+        hsv_bg_range = BGRToHSV(bg_region)
+        hsv = BGRToHSV(input)
+    except cv2.error as e:
+        print(f"Error: {e}")
+        return input
+
+    # Range of hsv should only care about the value rather than the hue and saturation (TODO More elegant solution)
+    hsv_text_range[0][0][0] = 0
+    hsv_text_range[0][0][1] = 0
+    hsv_text_range[0][1][0] = 255
+    hsv_text_range[0][1][1] = 255
+
+    print(hsv_text_range)
+    mask = cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
+    # return input
+    # return mask
+    return cv2.bitwise_and(hsv, hsv, mask=mask)
 
     mask = cv2.inRange(hsv, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
 
@@ -201,28 +202,26 @@ def highlightText(input: MatLike, text_range: Set, foreground_range: Set) -> Mat
     # return dilate
     return blurImage(cv2.bitwise_and(dilate, mask), 0.2) # Change blur after text extraction to be 0.5
 
-
-
 def preprocessImage(input: MatLike) -> MatLike:
     ''' Main process of preprocessing each step is separated into individual functions '''
 
     # Apply filters to image
     weighted = contrastImage(input)
     scaled = rescaleImage(weighted)
+    print(scaled.shape)
     blurred = blurImage(scaled)
 
+    # Exclude everything else except the region of the note
+    note = highlightBoundary(blurred)
+
     # Histogram analysis to determine the range of text colors
-    (text_range, bg_range) = findColorRange(blurred)
+    (text_range, bg_range) = findColorRange(note)
 
     print(f"Text Color range (RGB): {text_range}")
     print(f"Background Color Range (RGB): {bg_range}")
 
-    # Exclude everything else except the region of the note
-    note = highlightBoundary(blurred, text_range, bg_range)
-
-    return note
     # Exclude everything else except the actual text that make up the note
-    result = highlightText(note, text_range, foreground_range)
+    result = highlightText(note, text_range, bg_range)
 
     return result
 
