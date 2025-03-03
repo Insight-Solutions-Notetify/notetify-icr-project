@@ -200,6 +200,14 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
         # Show composition of model
         # model.summary()
     
+    # Divide the dataset[0] and dataset[1] training data into training and validation data
+    # 10% of the training data will be used for validation
+    x_val, x_train = dataset[0][:69793], dataset[0][69793:] # 10% of the training data
+    y_val, y_train = dataset[1][:69793], dataset[1][69793:] # 10% of the training data
+
+    print("Validation labels shape: ", y_val)
+    return
+
     round_results = []
     start = timer()
 
@@ -232,9 +240,9 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy']) # Check what other metrics can be analyzed)
 
-        history = model.fit(dataset[0], dataset[1],
+        history = model.fit(x_train, y_train,
                             epochs=epoch, # 100 epochs is 1 hour with RTX 4080
-                            validation_data=(dataset[2], dataset[3]),
+                            validation_data=(x_val, y_val),
                             # batch_size=32,
                             callbacks=[early_stopping, cp_callback, reduce_lr, EpochDelayCallback(delay_seconds=sleep)],
                             verbose=1)
