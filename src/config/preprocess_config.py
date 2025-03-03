@@ -31,9 +31,9 @@ class PreprocessConfig:
     
 
     # Horizontal projection for text lines
-    KERNEL_RATIO = (5, 3) # TODO - This is probably ideal for text to be detected show try not to edit this if possible
+    KERNEL_RATIO = (2, 8) # TODO - This is probably ideal for text to be detected show try not to edit this if possible
     DILATE_ITER = 4
-    ASPECT_RATIO = 7.0
+    ASPECT_RATIO = 0.030
     
 
 preprocess_config = PreprocessConfig()
