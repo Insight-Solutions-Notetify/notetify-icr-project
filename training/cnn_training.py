@@ -341,8 +341,9 @@ async def main():
                 filename_weights = 'emnist_model.weights.h5'
                 print(f"Starting training for {round} rounds and {epoch} epochs. Sleep: {sleep} secs. Saving to file: {filename_model} & {filename_weights}.")
                 print("Loading dataset...")
-                await dataset
-                dataset = dataset.result()[0]
+                if type(dataset) != type([]):
+                    await dataset
+                    dataset = dataset.result()[0]
                 train_model(model, dataset, round, epoch, sleep, filename_model, filename_weights)
             elif default.upper() == 'C':
                 round = int(input("Rounds of epoch sets: ")) # We split epochs to ensure clearing sessions and no memory leak in the end.
