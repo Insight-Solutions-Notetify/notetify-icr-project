@@ -164,11 +164,15 @@ def sample_emnist(dataset = None):
 ### LeNet with Keras and TensorFlow ###
 # Training module
 def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filename_model=None, filename_weights=None):
+    loss_index = -1
     if filename_model:
         if os.path.exists(f'training/{filename_model}'):
             print("Loading from existing")
             model = models.load_model(f'training/{filename_model}')
         if filename_weights:
+            loss_index = filename_weights.find("loss") # Check if file is emnist_model_lossx.xx.weights.h5
+            if loss_index != -1:
+                prev_val_loss: float = float(filename_weights[loss_index + 4:loss_index + 8])
             try:
                 model.load_weights(f"training/{filename_weights}")
             except ValueError:
@@ -205,9 +209,6 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
     x_val, x_train = dataset[0][:69793], dataset[0][69793:] # 10% of the training data
     y_val, y_train = dataset[1][:69793], dataset[1][69793:] # 10% of the training data
 
-    print("Validation labels shape: ", y_val)
-    return
-
     round_results = []
     start = timer()
 
@@ -218,11 +219,13 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
                   metrics=['accuracy']) # Check what other metrics can be analyzed
     
     filepath = 'training/emnist_model_loss{val_loss:.2f}.weights.h5'
-    checkpoint_path = "training/emnist_model.weights.h5"
+    # checkpoint_path = "training/emnist_model.weights.h5"
     cp_callback = callbacks.ModelCheckpoint(filepath=filepath,
                                             save_weights_only=True,
                                             save_best_only=True,
                                             verbose=1)
+    if loss_index != -1:
+        cp_callback.best = prev_val_loss # Continue previous weights from last call
 
     early_stopping = callbacks.EarlyStopping(monitor='val_loss',
                                             patience=10,
@@ -233,9 +236,12 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
     reduce_lr = callbacks.ReduceLROnPlateau(monitor='val_accuracy', patience=3, verbose=1, factor=0.2, min_lr=1e-6)
 
     for round in range(rounds):
+        if round != 0:
+            model.load_weights(f'training/emnist_model_loss{prev_val_loss:.2f}.weights.h5') # Continue where previous weights were running
+            cp_callback.best = prev_val_loss # Continue with previous weights from last call
+
         # Reset optimzier learning rate for fresh lense on sample data
         adam.learning_rate = 5e-4
-        # print(adam._get_current_learning_rate())
         model.compile(optimizer=adam,
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy']) # Check what other metrics can be analyzed)
@@ -247,20 +253,19 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
                             callbacks=[early_stopping, cp_callback, reduce_lr, EpochDelayCallback(delay_seconds=sleep)],
                             verbose=1)
         
-
-        print(f"Completed round {round + 1}. Results: ")
+        prev_val_loss = cp_callback.best
+        
+        print(f"Completed round {round + 1}.\nResults: ")
         # print(history.history)
         evaluation = model.evaluate(dataset[2], dataset[3])
         print(f"test loss: {evaluation[0]:.04f}, test acc: {evaluation[1]:.04f}")
 
-        results = f"Round {round + 1} - test loss, test acc: {evaluation}"
+        results = f"Round: {round + 1} ----- test loss, test acc: {evaluation}"
         round_results.append(results)
         
-        # model.save(f'training/emnist_model_{round + 1}.keras') # Save between each round of epoch () 
+        
         model.save_weights(f'training/emnist_model_{round + 1}.weights.h5') # Save weights instead of model.keras
-        # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
-        model.load_weights(checkpoint_path)
-     
+
     model.save('training/emnist_model.keras') # Final save after all operations
 
     print(f"====================================\n",
