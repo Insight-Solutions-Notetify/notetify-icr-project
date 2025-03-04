@@ -209,6 +209,8 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy']) # Check what other metrics can be analyzed
     
+    ### NS4-22-saving-weights
+    # This is the main way of saving weights based on the loss function. Super important to enable better and better iterations of the model need to verify this works. Other saving factors for safety.
     filepath = 'training/emnist_model_loss{val_loss:.2f}.weights.h5'
     checkpoint_path = "training/emnist_model.weights.h5"
     cp_callback = callbacks.ModelCheckpoint(filepath=filepath,
@@ -248,6 +250,8 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
         results = f"Round {round + 1} - test loss, test acc: {evaluation}"
         round_results.append(results)
         
+        ### NS4-22-saving-weights
+        # Second method to safely save weights for percautions
         # model.save(f'training/emnist_model_{round + 1}.keras') # Save between each round of epoch () 
         model.save_weights(f'training/emnist_model_{round + 1}.weights.h5') # Save weights instead of model.keras
         # keras.backend.clear_session() # Unecessary since we are maintaining the model used from the start
