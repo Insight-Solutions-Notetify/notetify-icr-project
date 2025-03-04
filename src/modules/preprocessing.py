@@ -183,7 +183,7 @@ def highlightText(input: MatLike, text_range: list, bg_range: list) -> MatLike:
     # return cv2.bitwise_and(input, mask)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
-    print(kernel)
+    # print(kernel)
     dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.DILATE_ITER)
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # return dilate
@@ -228,17 +228,18 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
-    sample_image = cv2.imread("src/images/black_sample.jpg")
-    # hist = cv2.calcHist([sample_image], [0], None, [256], [0, 256])
-    # plt.plot(hist)
-    # plt.show()
-    # cv2.imshow("Original", sample_image)
+    sample_1 = cv2.imread("src/images/black_sample.jpg")
+    sample_2 = cv2.imread("src/images/shaded.jpg")
+    sample_3 = cv2.imread("src/images/test_sample_2.jpg")
 
-    result = preprocessImage(sample_image)
-    cv2.imshow("Result", result)
-    
-    # inverse = flipImage(result)
-    # cv2.imshow("Inverted Result", inverse)
+    result = preprocessImage(sample_1)
+    cv2.imshow("Result: Sample 1", result)
+    cv2.waitKey(0)
+    result2 = preprocessImage(sample_2)
+    cv2.imshow("Result: Sample 2", result2)
+    cv2.waitKey(0)
+    result3 = preprocessImage(sample_3)
+    cv2.imshow("Result: Sample 3", result3)
     cv2.waitKey(0)
 
     print("Complete preprocess module")
