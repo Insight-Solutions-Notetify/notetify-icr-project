@@ -17,6 +17,7 @@ import random
 import matplotlib.pyplot as plt
 
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
 
 from keras import layers, models, callbacks, optimizers
 from keras.api.layers import RandomZoom, Rescaling, RandomFlip, RandomRotation, RandomTranslation
@@ -206,8 +207,9 @@ def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filenam
     
     # Divide the dataset[0] and dataset[1] training data into training and validation data
     # 10% of the training data will be used for validation
-    x_val, x_train = dataset[0][:69793], dataset[0][69793:] # 10% of the training data
-    y_val, y_train = dataset[1][:69793], dataset[1][69793:] # 10% of the training data
+    x_train, x_val, y_train, y_val = train_test_split(dataset[0], dataset[1], test_size=0.1, random_state=42)
+    # x_val, x_train = dataset[0][:69793], dataset[0][69793:] # 10% of the training data
+    # y_val, y_train = dataset[1][:69793], dataset[1][69793:] # 10% of the training data
 
     round_results = []
     start = timer()
