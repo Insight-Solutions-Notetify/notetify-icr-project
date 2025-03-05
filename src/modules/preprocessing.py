@@ -84,6 +84,24 @@ def rescaleImage(input: MatLike) -> MatLike:
     
     return result
 
+def rotateImage(input: MatLike) -> MatLike:
+    ''' Rotate image to be upright '''
+    gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+    _, threshold = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    coords = np.column_stack(np.where(threshold > 0))
+    angle = cv2.minAreaRect(coords)[-1]
+
+    if angle < -45:
+        angle = -(90 + angle)
+    else:
+        angle = -angle
+    
+    (h, w) = input.shape[:2]
+    center = (w // 2, h // 2)
+    rot_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    rotated_image = cv2.warpAffine(input, rot_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    return rotated_image
+
 def findColorRange(input: MatLike, k = 2) -> Set:
     ''' Identify the color range for text and background by using k-clustering '''
     image = BGRToRGB(input)
@@ -211,7 +229,8 @@ def preprocessImage(input: MatLike) -> MatLike:
 
     # Apply filters to image
     weighted = contrastImage(input)
-    scaled = rescaleImage(weighted)
+    rotated = rotateImage(weighted)
+    scaled = rescaleImage(rotated)
     # print(scaled.shape)
     blurred = blurImage(scaled)
 
