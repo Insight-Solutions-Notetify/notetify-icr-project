@@ -3,37 +3,31 @@ import numpy as np
 class PreprocessConfig:
 
     # Image Adjustment
-    BRIGHTNESS = 0.0
-    CONTRAST = 1
+    BRIGHTNESS = -50
+    CONTRAST = 1.2
+
+    # Image Rescaling Parameters
+    IMG_WIDTH = 800
+
+    # Color Range
+    MIN_RANGE = -25
+    MAX_RANGE = 10
 
     # Text Detection
     LOWER_RANGE = 0
-    UPPER_RANGE = 256
-
-    # Image Rescaling Parameters
-    ZOOM_FACTOR = 3.0
-    RESIZED_FACTOR = 1/3.0
-    MAX_WIDTH = 1000
-
+    UPPER_RANGE = 255
 
     # Shading
-    SHADES = 5
-    
+    SHADES = 8
 
     # Gaussian Blur
     KERNEL_DIMS = 3
     GAUSSIAN_SIGMA = 0
 
-
-    # Masking
-    LOWER_MASK = np.array([0, 0, 170]) # TODO - This should dynamically change based on the histogram of the image
-    UPPER_MASK = np.array([0, 0, 255]) # TODO - The second most common grouping of color is most likely text and not the background
-    
-
     # Horizontal projection for text lines
-    KERNEL_RATIO = (2, 8) # TODO - This is probably ideal for text to be detected show try not to edit this if possible
+    KERNEL_RATIO = (3, 6)
     DILATE_ITER = 4
-    ASPECT_RATIO = 0.030
+    ASPECT_RATIO = 1.1
     
 
 preprocess_config = PreprocessConfig()
