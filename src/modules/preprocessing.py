@@ -138,18 +138,18 @@ def highlightBoundary(input: MatLike) -> MatLike:
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         # Ignore small contours and contours that match the image size
-        print(f"Width: {w}, Height: {h}")
+        # print(f"Width: {w}, Height: {h}")
         if w == shaded.shape[1] or h == shaded.shape[0]:
             continue
         width_ratio = w / float(preprocess_config.MAX_WIDTH)
-        print(width_ratio)
+        # print(width_ratio)
         if width_ratio > 0.001:
             x_box = min(x_box, x)
             y_box = min(y_box, y)
             min_width = max(min_width, x + w)
             min_height = max(min_height, y + h)
 
-    print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
+    # print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
     if x_box == float('inf') or y_box == float('inf'):
         return input
 
@@ -175,7 +175,7 @@ def highlightText(input: MatLike, text_range: list, bg_range: list) -> MatLike:
     hsv_text_range[0][1][0] = 255
     hsv_text_range[0][1][1] = 255
 
-    print(hsv_text_range)
+    # print(hsv_text_range)
     mask = cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
     # return input
     # return mask
@@ -208,7 +208,7 @@ def preprocessImage(input: MatLike) -> MatLike:
     # Apply filters to image
     weighted = contrastImage(input)
     scaled = rescaleImage(weighted)
-    print(scaled.shape)
+    # print(scaled.shape)
     blurred = blurImage(scaled)
 
     # Exclude everything else except the region of the note
@@ -217,8 +217,8 @@ def preprocessImage(input: MatLike) -> MatLike:
     # Histogram analysis to determine the range of text colors
     (text_range, bg_range) = findColorRange(note)
 
-    print(f"Text Color range (RGB): {text_range}")
-    print(f"Background Color Range (RGB): {bg_range}")
+    # print(f"Text Color range (RGB): {text_range}")
+    # print(f"Background Color Range (RGB): {bg_range}")
 
     # Exclude everything else except the actual text that make up the note
     result = highlightText(note, text_range, bg_range)
