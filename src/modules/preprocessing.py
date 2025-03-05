@@ -144,7 +144,7 @@ def highlightBoundary(input: MatLike) -> MatLike:
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         # Ignore small contours and contours that match the image size
-        print(f"Width: {w}, Height: {h}")
+        # print(f"Width: {w}, Height: {h}")
         if w == shaded.shape[1] or h == shaded.shape[0]:
             continue
         width_ratio = w / float(preprocess_config.IMG_WIDTH)
@@ -155,7 +155,7 @@ def highlightBoundary(input: MatLike) -> MatLike:
             min_width = max(min_width, x + w)
             min_height = max(min_height, y + h)
 
-    print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
+    # print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
     if x_box == float('inf') or y_box == float('inf'):
         return input
 
