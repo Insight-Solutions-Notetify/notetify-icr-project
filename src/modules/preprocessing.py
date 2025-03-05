@@ -47,6 +47,8 @@ def BGRToHSV(input: MatLike) -> MatLike:
     hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
     return hsv
 
+### NS4-32-image-filters
+# Several filters to the image useful for preprocessing
 def flipImage(input: MatLike) -> MatLike:
     ''' Inverse of inputted image '''
     return 255 - input
