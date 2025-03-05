@@ -161,7 +161,8 @@ def sample_emnist(dataset = None):
 
     show_images(images_2_show, titles_2_show)
 
-
+### NS4-23-training-function
+# This is the entire training function of our CNN model. Just ensure that the model prepares the model and loads the data for training. Later on task will look over exacts of this function.
 ### LeNet with Keras and TensorFlow ###
 # Training module
 def train_model(model=None, dataset=None, rounds=10, epoch=60, sleep=30, filename_model=None, filename_weights=None):
