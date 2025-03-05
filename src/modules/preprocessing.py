@@ -201,7 +201,8 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
             print(ar)
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
 
-    return dilate
+    # return dilate
+    # Verify that the final result here is the binarized output
     return flipImage(blurImage(cv2.bitwise_and(dilate, mask), 0.2))# Change blur after text extraction to be 0.5
 
 def preprocessImage(input: MatLike) -> MatLike:
