@@ -312,7 +312,8 @@ def test_model(model=None, dataset=None, start_index=0, size=0, filename_model=N
         
         print(f"Accuracy: {correct/size}")
 
-
+# NS4-18-implement-training-tool
+# Just check that the loading of the module is good and the CLI interface can go through all possible options
 async def main():
     emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
     dataset = asyncio.gather(emnist_dataloader.load_data()) # Dataset consist of [x_train, y_train, x_test, y_test] (x - images, y - labels)
