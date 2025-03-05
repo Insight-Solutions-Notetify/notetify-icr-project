@@ -76,11 +76,11 @@ def rescaleImage(input: MatLike) -> MatLike:
 
     IMG_RATIO = img_width / img_height
 
-    print(IMG_RATIO)
+    # print(IMG_RATIO)
 
     result = cv2.resize(input,(preprocess_config.IMG_WIDTH, int(preprocess_config.IMG_WIDTH * IMG_RATIO))) #, fx=IMG_RATIO, fy=IMG_RATIO)
 
-    print("SHAPE:", result.shape)
+    # print("SHAPE:", result.shape)
     
     return result
 
@@ -198,7 +198,7 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
         ar = w / float(h)
         # print(ar)
         if ar < preprocess_config.ASPECT_RATIO:
-            print(ar)
+            # print(ar)
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
 
     # return dilate
@@ -220,7 +220,7 @@ def preprocessImage(input: MatLike) -> MatLike:
     text_range = findColorRange(note)
 
     # return note
-    print(f"Text Color range (GRAY): {text_range}")
+    # print(f"Text Color range (GRAY): {text_range}")
     # print(f"Background Color Range (RGB): {bg_range}")
 
     # Exclude everything else except the actual text that make up the note
