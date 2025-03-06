@@ -99,13 +99,19 @@ class EmnistDataloader(object):
          
         return np.array(images), np.array(labels)
             
-    async def load_data(self):
-        print("Loading training data...")
-        x_train, y_train = await self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
-
-        print("Loading test data...")
-        x_test, y_test = await self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
-        return [x_train, y_train, x_test, y_test] 
+    async def load_data(self, data_select):
+        if (data_select == '0'):
+            print("Loading training data...")
+            x_train, y_train = await self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
+            x_test, y_test = await self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
+            return [x_train, y_train, x_test, y_test]
+        elif (data_select == '1'):
+            print("Loading test data...")
+            x_test, y_test = await self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
+            return [0, 0, x_test, y_test]
+        else:
+            print("Invalid input. Please try again.")
+            return 0
     
 #
 # Set file paths based on added EMNIST Datasets
@@ -314,9 +320,11 @@ def test_model(model=None, dataset=None, start_index=0, size=0, filename_model=N
         y_rand_test = [character_by_index[ix] for ix in y_rand_test]
         
         result = model.predict(x_rand_test, batch_size=32)
-        printed_result = [character_by_index[np.argmax(ix)] for ix in result]
+        printed_guess = [character_by_index[np.argmax(ix)] for ix in result]
+        confidence = [np.max(ix) for ix in result]
 
-        print(y_rand_test)
+        # Combine the results into a single string
+        printed_result = [f"Actual: {y_rand_test[i]} Predicted: {printed_guess[i]} Confidence: {confidence[i]:.2f}" for i in range(size)]
         print(printed_result)
 
         correct = 0
@@ -330,7 +338,8 @@ def test_model(model=None, dataset=None, start_index=0, size=0, filename_model=N
 # Just check that the loading of the module is good and the CLI interface can go through all possible options
 async def main():
     emnist_dataloader = EmnistDataloader(training_images_filepath, training_labels_filepath, test_images_filepath, test_labels_filepath)
-    dataset = asyncio.gather(emnist_dataloader.load_data()) # Dataset consist of [x_train, y_train, x_test, y_test] (x - images, y - labels)
+    data_select = input("Load dataset mode: [Both, Only Test] data? Type 0, 1:")
+    dataset = asyncio.gather(emnist_dataloader.load_data(data_select)) # Dataset consist of [x_train, y_train, x_test, y_test] (x - images, y - labels)
     # sample_emnist()
 
     # Check for GPU available
@@ -393,9 +402,7 @@ async def main():
             if not size == 0:
                 start_index = int(input("Starting index of test_images:"))
             filename_model = 'emnist_model.keras'
-            filename_weights = 'emnist_model.weights.h5'
-            # filename_model = input("Model Filename: ")
-            # filename_weights = input("Weights Filename: ")
+            filename_weights = 'emnist_model_loss0.68.weights.h5'
             if start_index + size > len(dataset[2]):
                 print("Invalid combination of size and start index")
             else:
