@@ -101,8 +101,8 @@ class EmnistDataloader(object):
             
     async def load_data(self):
         print("Loading training data...")
-        x_train, y_train = await self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
-
+        # x_train, y_train = await self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
+        x_train, y_train = (0, 0)
         print("Loading test data...")
         x_test, y_test = await self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
         return [x_train, y_train, x_test, y_test] 
@@ -393,9 +393,7 @@ async def main():
             if not size == 0:
                 start_index = int(input("Starting index of test_images:"))
             filename_model = 'emnist_model.keras'
-            filename_weights = 'emnist_model.weights.h5'
-            # filename_model = input("Model Filename: ")
-            # filename_weights = input("Weights Filename: ")
+            filename_weights = input("Weights Filename (Empty if none): ")
             if start_index + size > len(dataset[2]):
                 print("Invalid combination of size and start index")
             else:
