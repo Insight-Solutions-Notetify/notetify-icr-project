@@ -407,6 +407,7 @@ async def main():
                 print("Invalid combination of size and start index")
             else:
                 print(f"Testing model with {size} images starting from index {start_index}")
+                print(f"Using weights: {filename_weights}")
                 test_model(model, dataset, start_index, size, filename_model, filename_weights)
         elif user_input.upper() == 'S':
             print("Loading dataset")
