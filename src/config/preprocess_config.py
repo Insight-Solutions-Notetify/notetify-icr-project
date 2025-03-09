@@ -2,26 +2,32 @@ import numpy as np
 
 class PreprocessConfig:
 
+    # Image Adjustment
+    BRIGHTNESS = -50
+    CONTRAST = 1.2
+
     # Image Rescaling Parameters
-    ZOOM_FACTOR = 3.0
-    RESIZED_FACOTR = 1/3.0
+    IMG_WIDTH = 800
+
+    # Color Range
+    MIN_RANGE = -25
+    MAX_RANGE = 10
+
+    # Text Detection
+    LOWER_RANGE = 0
+    UPPER_RANGE = 255
 
     # Shading
-    SHADES = 5
-    
+    SHADES = 8
+
     # Gaussian Blur
     KERNEL_DIMS = 3
     GAUSSIAN_SIGMA = 0
 
-    # Masking
-    LOWER_MASK = np.array([0, 0, 100])
-    UPPER_MASK = np.array([157, 40, 255])
-    
     # Horizontal projection for text lines
-    KERNEL_RATIO = (5, 3)
+    KERNEL_RATIO = (3, 6)
     DILATE_ITER = 4
-
+    ASPECT_RATIO = 1.1
     
-
 
 preprocess_config = PreprocessConfig()
