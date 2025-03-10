@@ -10,7 +10,7 @@ class PreprocessConfig:
     IMG_WIDTH = 800
 
     # Color Range
-    MIN_RANGE = -25
+    MIN_RANGE = -15
     MAX_RANGE = 10
 
     # Text Detection
