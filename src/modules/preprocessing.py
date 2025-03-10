@@ -48,12 +48,11 @@ def BGRToHSV(input: MatLike) -> MatLike:
     hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
     return hsv
 
-NS4-27-dynamic-background
 def BGRToRGB(input: MatLike) -> MatLike:
     ''' Convert BGR to RGB '''
     rgb = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
     return rgb
-NS4-10-preprocessing-module
+
 def flipImage(input: MatLike) -> MatLike:
     ''' Inverse of inputted image '''
     return 255 - input
