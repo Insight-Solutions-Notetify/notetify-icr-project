@@ -8,6 +8,7 @@ import os
 import sys
 from typing import Set
 from collections import Counter
+from scipy.ndimage import rotate
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
@@ -84,24 +85,32 @@ def rescaleImage(input: MatLike) -> MatLike:
     # print("SHAPE:", result.shape)
     
     return result
+def correctSkew(input: MatLike, delta=3, limit=45) -> MatLike:
+    ''' Correct skew of image'''
+    def determine_score(arr, angle):
+        data = rotate(arr, angle, reshape=False, order=0)
+        histogram = np.sum(data, axis=1, dtype=float)
+        score = np.sum((histogram[1:] - histogram[:-1]) ** 2, dtype=float)
+        return histogram, score
 
-def rotateImage(input: MatLike) -> MatLike:
-    ''' Rotate image to be upright '''
     gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
-    _, threshold = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    coords = np.column_stack(np.where(threshold > 0))
-    angle = cv2.minAreaRect(coords)[-1]
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
-    if angle < -45:
-        angle = -(90 + angle)
-    else:
-        angle = -angle
-    
+    scores = []
+    angles = np.arange(-limit, limit + delta, delta)
+    for angle in angles:
+        histogram, score = determine_score(thresh, angle)
+        scores.append(score)
+
+    best_angle = angles[scores.index(max(scores))]
+
     (h, w) = input.shape[:2]
     center = (w // 2, h // 2)
-    rot_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated_image = cv2.warpAffine(input, rot_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-    return rotated_image
+    M = cv2.getRotationMatrix2D(center, best_angle, 1.0)
+    corrected = cv2.warpAffine(input, M, (w, h), flags=cv2.INTER_CUBIC,borderMode=cv2.BORDER_REPLICATE)
+
+    print(f"Best Angle: {best_angle}")
+    return corrected
 
 def findColorRange(input: MatLike, k = 2) -> Set:
     ''' Identify the color range for text and background by using k-clustering '''
@@ -230,8 +239,8 @@ def preprocessImage(input: MatLike) -> MatLike:
 
     # Apply filters to image
     weighted = contrastImage(input)
-    rotated = rotateImage(weighted)
-    scaled = rescaleImage(rotated)
+    skewed = correctSkew(weighted)
+    scaled = rescaleImage(skewed)
     # print(scaled.shape)
     blurred = blurImage(scaled)
 
@@ -260,25 +269,25 @@ if __name__ == "__main__":
     sample_4 = cv2.imread("src/images/pink_slanted.jpg")
     sample_5 = cv2.imread("src/images/green_background.jpg")
     sample_6 = cv2.imread("src/images/distraction_colors.jpg")
-    sample_7 = cv2.imread("src/images/problem_1.jpg")
+    # sample_7 = cv2.imread("src/images/problem_1.jpg")
     sample_8 = cv2.imread("src/images/blue_slanted.jpg")
 
-    result = preprocessImage(sample_1)
-    cv2.imshow("Result: Blue Text", result)
-    result2 = preprocessImage(sample_2)
-    cv2.imshow("Result: Small", result2)
-    result3 = preprocessImage(sample_3)
-    cv2.imshow("Result: Scribble", result3)
-    cv2.waitKey(0)
+    # result = preprocessImage(sample_1)
+    # cv2.imshow("Result: Blue Text", result)
+    # result2 = preprocessImage(sample_2)
+    # cv2.imshow("Result: Small", result2)
+    # result3 = preprocessImage(sample_3)
+    # cv2.imshow("Result: Scribble", result3)
+    # cv2.waitKey(0)
     reuslt4 = preprocessImage(sample_4)
     cv2.imshow("Result: Pink Slanted", reuslt4)
-    result5 = preprocessImage(sample_5)
-    cv2.imshow("Result: Green Background", result5)
-    result6 = preprocessImage(sample_6)
-    cv2.waitKey(0)
-    cv2.imshow("Result: Distraction Colors", result6)
-    result7 = preprocessImage(sample_7)
-    cv2.imshow("Result: Problem 1", result7)
+    # result5 = preprocessImage(sample_5)
+    # cv2.imshow("Result: Green Background", result5)
+    # result6 = preprocessImage(sample_6)
+    # cv2.waitKey(0)
+    # cv2.imshow("Result: Distraction Colors", result6)
+    # result7 = preprocessImage(sample_7)
+    # cv2.imshow("Result: Problem 1", result7)
     result8 = preprocessImage(sample_8)
     cv2.imshow("Result: Blue Slanted", result8)
     cv2.waitKey(0)
