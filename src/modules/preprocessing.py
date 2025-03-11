@@ -26,7 +26,8 @@ from src.config.preprocess_config import preprocess_config
 # - Range of desired shades of handwriting to be included
 # - Mask on desired range
 
-    
+### NS4-28-converison-functions
+# Several functions for conversion should be accurate and verified 
 def BGRToShades(input: MatLike ) -> MatLike:
     ''' Convert BGR to specialized Shades of GRAY'''
     gray_image = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
