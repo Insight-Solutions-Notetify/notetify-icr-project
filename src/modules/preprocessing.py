@@ -168,6 +168,10 @@ def highlightBoundary(input: MatLike) -> MatLike:
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
     dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # New method overwriting the previous one
+    edges = cv2.Canny(gray, 50, 150)
+    cnts = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # return dilate
 
     # Draw contours to verify that the correct region is being selected
@@ -176,31 +180,42 @@ def highlightBoundary(input: MatLike) -> MatLike:
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     x_box, y_box, min_width, min_height = float('inf'), float('inf'), 0, 0
 
-    for c in cnts:
-        x, y, w, h = cv2.boundingRect(c)
-        # Ignore small contours and contours that match the image size
-        # print(f"Width: {w}, Height: {h}")
-        if w == shaded.shape[1] or h == shaded.shape[0]:
-            continue
-        width_ratio = w / float(preprocess_config.IMG_WIDTH)
-        # print(f"Width Ratio: {width_ratio}")
-        if width_ratio > 0.001 and width_ratio < 0.92:
-            if (w * h) < 0.1 * (shaded.shape[0] * shaded.shape[1]): # Ignore small contours
+    largest_contour = max(cnts, key=cv2.contourArea)
+    x, y, w, h = cv2.boundingRect(largest_contour)
+    # If largest contour is too small try other method
+    print(f"Size: {w * h}")
+    print(f"Threshold: {0.4 * shaded.shape[0] * shaded.shape[1]}")
+    if w * h > 0.2 * (shaded.shape[0] * shaded.shape[1]):
+        cropped = reversed[y:y + h, x:x + w]
+        return cropped
+    else:
+        for c in cnts:
+            x, y, w, h = cv2.boundingRect(c)
+            # Ignore small contours and contours that match the image size
+            # print(f"Width: {w}, Height: {h}")
+            if w == shaded.shape[1] or h == shaded.shape[0]:
                 continue
-            if (w * h) > 0.5 * (shaded.shape[0] * shaded.shape[1]): # Ignore large contours
-                continue
-            # print(f"Box: {x}, {y}, {w}, {h}")
-            x_box = min(x_box, x)
-            y_box = min(y_box, y)
-            min_width = max(min_width,x + w)
-            min_height = max(min_height,y + h)
+            width_ratio = w / float(preprocess_config.IMG_WIDTH)
+            
+            print(f"Width Ratio: {width_ratio}")
+            if width_ratio > 0.001 and width_ratio < 0.92:
+                if (w * h) < 0.1 * (shaded.shape[0] * shaded.shape[1]): # Ignore small contours
+                    continue
+                if (w * h) > 0.5 * (shaded.shape[0] * shaded.shape[1]): # Ignore large contours
+                    continue
+                # print(f"Box: {x}, {y}, {w}, {h}")
+                x_box = min(x_box, x)
+                y_box = min(y_box, y)
+                min_width = max(min_width,x + w)
+                min_height = max(min_height,y + h)
 
-    # print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
-    if x_box == float('inf') or y_box == float('inf'):
-        return reversed
+        # print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
+        if x_box == float('inf') or y_box == float('inf'):
+            return reversed
+        
+        cropped = reversed[y_box:min_height - 100, x_box:min_width]
+        return cropped
     
-    cropped = reversed[y_box:min_height - 100, x_box:min_width]
-    return cropped
 
 def highlightText(input: MatLike, text_range: list) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
@@ -298,6 +313,7 @@ if __name__ == "__main__":
     result3 = preprocessImage(sample_3)
     cv2.imshow("Result: Scribble", result3)
     cv2.waitKey(0)
+    exit()
     reuslt4 = preprocessImage(sample_4)
     cv2.imshow("Result: Pink Slanted", reuslt4)
     result5 = preprocessImage(sample_5)
