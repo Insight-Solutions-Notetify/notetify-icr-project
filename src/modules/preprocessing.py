@@ -85,7 +85,8 @@ def rescaleImage(input: MatLike) -> MatLike:
     # print("SHAPE:", result.shape)
     
     return result
-def correctSkew(input: MatLike, delta=3, limit=45) -> MatLike:
+
+def correctSkew(input: MatLike, delta=10, limit=40) -> MatLike:
     ''' Correct skew of image'''
     def determine_score(arr, angle):
         data = rotate(arr, angle, reshape=False, order=0)
@@ -99,6 +100,7 @@ def correctSkew(input: MatLike, delta=3, limit=45) -> MatLike:
     scores = []
     angles = np.arange(-limit, limit + delta, delta)
     for angle in angles:
+        # print(angle)
         histogram, score = determine_score(thresh, angle)
         scores.append(score)
 
@@ -160,12 +162,17 @@ def highlightBoundary(input: MatLike) -> MatLike:
     flipped = flipImage(input)
     shaded = BGRToShades(flipped)
     reversed = cv2.cvtColor(shaded, cv2.COLOR_GRAY2BGR)
-    thresh = cv2.threshold(shaded, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
     dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # return dilate
 
+    # Draw contours to verify that the correct region is being selected
+    # cv2.drawContours(reversed, cnts[0], -1, (0, 255, 0), 2)
+    # return reversed
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     x_box, y_box, min_width, min_height = float('inf'), float('inf'), 0, 0
 
@@ -176,18 +183,23 @@ def highlightBoundary(input: MatLike) -> MatLike:
         if w == shaded.shape[1] or h == shaded.shape[0]:
             continue
         width_ratio = w / float(preprocess_config.IMG_WIDTH)
-        # print(width_ratio)
-        if width_ratio > 0.001:
+        # print(f"Width Ratio: {width_ratio}")
+        if width_ratio > 0.001 and width_ratio < 0.92:
+            if (w * h) < 0.1 * (shaded.shape[0] * shaded.shape[1]): # Ignore small contours
+                continue
+            if (w * h) > 0.5 * (shaded.shape[0] * shaded.shape[1]): # Ignore large contours
+                continue
+            # print(f"Box: {x}, {y}, {w}, {h}")
             x_box = min(x_box, x)
             y_box = min(y_box, y)
-            min_width = max(min_width, x + w)
-            min_height = max(min_height, y + h)
+            min_width = max(min_width,x + w)
+            min_height = max(min_height,y + h)
 
     # print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
     if x_box == float('inf') or y_box == float('inf'):
-        return input
-
-    cropped = reversed[y_box:min_height, x_box:min_width]
+        return reversed
+    
+    cropped = reversed[y_box:min_height - 100, x_box:min_width]
     return cropped
 
 def highlightText(input: MatLike, text_range: list) -> MatLike:
@@ -208,6 +220,7 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
 
     # print(hsv_text_range)
     mask = cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
+    # return mask
     # return flipImage(cv2.bitwise_and(input, hsv, mask=mask))
 
     # mask = cv2.inRange(hsv, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
@@ -241,12 +254,14 @@ def preprocessImage(input: MatLike) -> MatLike:
     weighted = contrastImage(input)
     skewed = correctSkew(weighted)
     scaled = rescaleImage(skewed)
+    # return scaled
     # print(scaled.shape)
     blurred = blurImage(scaled)
+    # return blurred
 
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred)
-
+    # return note
     # Histogram analysis to determine the range of text colors
     text_range = findColorRange(note)
 
@@ -263,6 +278,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     print("Testing preprocessing module")
     
+    itsy_downward = cv2.imread("src/images/itsy_downward.jpg")
     sample_1 = cv2.imread("src/images/black_sample.jpg")
     sample_2 = cv2.imread("src/images/small.jpg")
     sample_3 = cv2.imread("src/images/test_sample_2.jpg")
@@ -272,6 +288,9 @@ if __name__ == "__main__":
     # sample_7 = cv2.imread("src/images/problem_1.jpg")
     sample_8 = cv2.imread("src/images/blue_slanted.jpg")
 
+    spider = preprocessImage(itsy_downward)
+    cv2.imshow("Result: Itsy Downward", spider)
+    cv2.waitKey(0)
     result = preprocessImage(sample_1)
     cv2.imshow("Result: Blue Text", result)
     result2 = preprocessImage(sample_2)
@@ -294,71 +313,3 @@ if __name__ == "__main__":
     cv2.destroyAllWindows()
 
     print("Complete preprocess module")
-
-
-# # # Check if the image is loaded
-# # if image is None:
-# #     raise FileNotFoundError("Image not loaded. Ensure 'black_sampel.jpg' exists in the same directory as the script.")
-
-# image = cv2.imread('src/images/black_sample.jpg')
-# # Convert BGR image to RGB
-# image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-# # Convert the image to grayscale
-# image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-# # Define the scale factors
-# scale_factor_1 = 3.0  # Increase size
-# scale_factor_2 = 1/3.0  # Decrease size
-
-# # Get the original image dimensions
-# height, width = image_rgb.shape[:2]
-
-# # Resize for zoomed image
-# new_height = int(height * scale_factor_1)
-# new_width = int(width * scale_factor_1)
-# zoomed_image = cv2.resize(image_rgb, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
-
-# # Resize for scaled image
-# new_height1 = int(height * scale_factor_2)
-# new_width1 = int(width * scale_factor_2)
-# scaled_image = cv2.resize(image_rgb, (new_width1, new_height1), interpolation=cv2.INTER_AREA)
-
-# # Convert the image to grayscale
-# image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-# # Define the scale factors
-# scale_factor_1 = 3.0  # Increase size
-# scale_factor_2 = 1/3.0  # Decrease size
-
-# # Get the original image dimensions
-
-# # Create subplots
-# fig, axs = plt.subplots(1, 4, figsize=(15, 4))
-
-
-# # SHOWING STEPS
-# # Plot the original image
-# axs[0].imshow(image_rgb)
-# axs[0].set_title(f'Original Image\nShape: {image_rgb.shape}')
-
-# # Plot the grayscale image
-# axs[1].imshow(image_gray, cmap='gray')  # Specify cmap for grayscale
-# axs[1].set_title(f'Grayscale Image\nShape: {image_gray.shape}')
-
-# # Plot the zoomed-in image
-# axs[2].imshow(zoomed_image)
-# axs[2].set_title(f'Zoomed Image\nShape: {zoomed_image.shape}')
-
-# # Plot the scaled-down image
-# axs[3].imshow(scaled_image)
-# axs[3].set_title(f'Scaled Image\nShape: {scaled_image.shape}')
-
-# # Remove axis ticks
-# for ax in axs:
-#     ax.set_xticks([])
-#     ax.set_yticks([])
-
-# # Display the images
-# plt.tight_layout()
-# plt.show()
