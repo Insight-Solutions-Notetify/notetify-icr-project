@@ -17,7 +17,7 @@ sys.path.insert(0, project_root)
 os.chdir(project_root)
 
 from src.config.preprocess_config import preprocess_config
-from src.modules.logger import logger
+from src.modules.logger import logger, log_execution_time
 
 ### PREPROCESS MODULE ###
 
@@ -106,6 +106,7 @@ def rescaleImage(input: MatLike) -> MatLike:
     logger.debug(f"Original Shape: {input.shape}, Resized Shape: {result.shape}\n")  
     return result
 
+@log_execution_time
 def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=preprocess_config.ANGLE_LIMIT) -> MatLike:
     ''' Correct skew of image'''
     logger.debug("Correcting skew of image")
@@ -136,6 +137,7 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
     logger.debug(f"Complete correctSkew()\n")
     return corrected
 
+@log_execution_time
 def findColorRange(input: MatLike, k = 2) -> Set:
     ''' Identify the color range for text and background by using k-clustering '''
     logger.debug("Finding text color range")
@@ -184,6 +186,7 @@ def findColorRange(input: MatLike, k = 2) -> Set:
     logger.debug(f"Text Color range (GRAY): {text_range}\n")
     return text_range
 
+@log_execution_time
 def highlightBoundary(input: MatLike) -> MatLike:
     ''' Removes any background apart from the medium where the text is located '''
     logger.debug("Highlighting the boundary of the note image")
@@ -249,7 +252,7 @@ def highlightBoundary(input: MatLike) -> MatLike:
         logger.debug(f"Cropped Shape: {cropped.shape}\n")
         return cropped
     
-
+@log_execution_time
 def highlightText(input: MatLike, text_range: list) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
     logger.debug("Highlighting text")
@@ -297,6 +300,7 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     logger.debug("Resulting highlighting\n")
     return flipImage(blurImage(cv2.bitwise_and(dilate, mask), 0.2))# Change blur after text extraction to be 0.5
 
+@log_execution_time
 def preprocessImage(input: MatLike) -> MatLike:
     ''' Main process of preprocessing each step is separated into individual functions '''
     logger.debug("Starting preprocess process")
@@ -338,7 +342,8 @@ if __name__ == "__main__":
     logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
     files = subprocess.check_output(["ls", image_path]).decode("utf-8")
     file_names = re.findall(IMAGE_REGEX, files)
-    logger.debug(f"File imported:\n{"\t".join(file_names)}\n")
+    joined_files = "\n".join(file_names)
+    logger.debug(f"File imported:\n{joined_files}\n")
 
     images = []
     for name in file_names:
