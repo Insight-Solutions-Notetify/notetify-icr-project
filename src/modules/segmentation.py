@@ -215,6 +215,7 @@ def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
                 os.path.join(output_dir, f"line_{i + 1}_word_{j + 1}_characters"),
                 "char"
             )
+    logger.debug("Complete segmentation\n")
 
 if __name__ == "__main__":
     logger.info("Testing segmentation module")
@@ -225,20 +226,21 @@ if __name__ == "__main__":
     # NCR generic sample retrieval
     image_path = "src/NCR_samples/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+    logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
     files = subprocess.check_output(["ls", image_path]).decode("utf-8")
     file_names = re.findall(IMAGE_REGEX, files)
-    # print(file_names)
+    logger.debug(f"File imported:\n{"\t".join(file_names)}\n")
 
     images = []
     for name in file_names:
         if os.path.exists(image_path + name):
             images.append(cv2.imread(f"{image_path}{name}"))
         else:
-            print(f"{name} not found in NCR_samples... skipping")
+            logger.warning(f"{name} not found in NCR_samples... skipping")
     
     for i in range(len(file_names)):
         preprocessed = preprocessing.preprocessImage(images[i])
-        print(f"Segmenting image {file_names[i]}")
+        logger.debug(f"Segmenting image {file_names[i]}")
         segmented = segmentate_image(preprocessed, output_dir)
     
     logger.info("Complete segmentation module")
