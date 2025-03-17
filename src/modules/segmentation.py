@@ -228,7 +228,7 @@ if __name__ == "__main__":
     # NCR generic sample retrieval
     image_path = "src/NCR_samples/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
-    files = subprocess.check_output(f"ls {image_path}").decode("utf-8")
+    files = subprocess.check_output(["ls", image_path]).decode("utf-8")
     file_names = re.findall(IMAGE_REGEX, files)
     # print(file_names)
 
