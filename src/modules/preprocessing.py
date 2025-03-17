@@ -37,6 +37,7 @@ def BGRToShades(input: MatLike ) -> MatLike:
     gray_image = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
     gray_image = gray_image.astype(np.float32)/255
 
+    logger.debug(f"Shading by {preprocess_config.SHADES} colors")
     result = 255 * np.floor(gray_image * preprocess_config.SHADES + 0.5) / preprocess_config.SHADES
     result = result.clip(0 ,255).astype(np.uint8)
     
@@ -63,6 +64,7 @@ def flipImage(input: MatLike) -> MatLike:
 
 def contrastImage(input: MatLike, contrast=preprocess_config.CONTRAST, brightness=preprocess_config.BRIGHTNESS):
     ''' Apply a contrast and brightness adjustment to the image '''
+    logger.debug(f"Applying a contrast value: {contrast}, brightness value: {brightness}")
     # # Testing new method of lab conversion
     # lab = cv2.cvtColor(input, cv2.COLOR_BGR2LAB)
 
@@ -77,14 +79,17 @@ def contrastImage(input: MatLike, contrast=preprocess_config.CONTRAST, brightnes
     # Old method
     # weighted = cv2.normalize(input, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
     adjusted_image = cv2.addWeighted(input, contrast, np.zeros(input.shape, input.dtype), 0, brightness)
+    logger.debug("Contrast Complete\n")
     return adjusted_image
 
 def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike:
+    logger.debug(f"Applying blur with strength {sigma}")
     gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), sigma)
     return gaussian
 
 def rescaleImage(input: MatLike) -> MatLike:
     ''' Rescale images down to a standard acceptable for input '''
+    logger.debug(f"Rescaling image to a maximum size of {preprocess_config.IMG_WIDTH}")
     img_width, img_height, _  = input.shape
 
     # if img_width > preprocess_config.IMG_WIDTH:
@@ -98,12 +103,12 @@ def rescaleImage(input: MatLike) -> MatLike:
 
     result = cv2.resize(input,(preprocess_config.IMG_WIDTH, int(preprocess_config.IMG_WIDTH * IMG_RATIO))) #, fx=IMG_RATIO, fy=IMG_RATIO)
 
-    # print("SHAPE:", result.shape)
-    
+    logger.debug(f"Original Shape: {input.shape}, Resized Shape: {result.shape}\n")  
     return result
 
 def correctSkew(input: MatLike, delta=10, limit=40) -> MatLike:
     ''' Correct skew of image'''
+    logger.debug("Correcting skew of image")
     def determine_score(arr, angle):
         data = rotate(arr, angle, reshape=False, order=0)
         histogram = np.sum(data, axis=1, dtype=float)
@@ -116,8 +121,8 @@ def correctSkew(input: MatLike, delta=10, limit=40) -> MatLike:
     scores = []
     angles = np.arange(-limit, limit + delta, delta)
     for angle in angles:
-        # print(angle)
         histogram, score = determine_score(thresh, angle)
+        logger.debug(f"Angle: {angle}, Score: {score}")
         scores.append(score)
 
     best_angle = angles[scores.index(max(scores))]
@@ -127,11 +132,13 @@ def correctSkew(input: MatLike, delta=10, limit=40) -> MatLike:
     M = cv2.getRotationMatrix2D(center, best_angle, 1.0)
     corrected = cv2.warpAffine(input, M, (w, h), flags=cv2.INTER_CUBIC,borderMode=cv2.BORDER_REPLICATE)
 
-    # print(f"Best Angle: {best_angle}")
+    logger.debug(f"Best Angle: {best_angle}")
+    logger.debug(f"Complete correctSkew()\n")
     return corrected
 
 def findColorRange(input: MatLike, k = 2) -> Set:
     ''' Identify the color range for text and background by using k-clustering '''
+    logger.debug("Finding text color range")
     image = BGRToRGB(input)
     
     pixels = image.reshape(-1, 3)
@@ -167,15 +174,19 @@ def findColorRange(input: MatLike, k = 2) -> Set:
 
     bg_range = color_ranges[background_label]
     text_range = color_ranges[text_label]
+    logger.debug(f"Background Color range (BGR): {bg_range}")
+    logger.debug(f"Text Color range (BGR): {text_range}")
 
     # Convert this RGB range to GRAY range
     text_range = [max(0, int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2]) + preprocess_config.MIN_RANGE), 
                   min(255, int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2]) + preprocess_config.MAX_RANGE)] # Add offset to handle boundary case values
     # bg_range = [int(0.114 * bg_range[0][0] + 0.587 * bg_range[0][1] + 0.299 * bg_range[0][2]), int(0.114 * bg_range[1][0] + 0.587 * bg_range[1][1] + 0.299 * bg_range[1][2])]
+    logger.debug(f"Text Color range (GRAY): {text_range}\n")
     return text_range
 
 def highlightBoundary(input: MatLike) -> MatLike:
     ''' Removes any background apart from the medium where the text is located '''
+    logger.debug("Highlighting the boundary of the note image")
     flipped = flipImage(input)
     shaded = BGRToShades(flipped)
     reversed = cv2.cvtColor(shaded, cv2.COLOR_GRAY2BGR)
@@ -205,7 +216,7 @@ def highlightBoundary(input: MatLike) -> MatLike:
 
     # If largest contour is too small try other method
     # print(f"Size: {w * h}")
-    # print(f"Threshold: {0.4 * shaded.shape[0] * shaded.shape[1]}")
+    # print(f"threshold: {0.4 * shaded.shape[0] * shaded.shape[1]}")
     if w * h > 0.2 * (shaded.shape[0] * shaded.shape[1]):
         cropped = reversed[y:y + h, x:x + w]
         return cropped
@@ -235,17 +246,19 @@ def highlightBoundary(input: MatLike) -> MatLike:
             return reversed
         
         cropped = reversed[y_box:min_height, x_box:min_width]
+        logger.debug(f"Cropped Shape: {cropped.shape}\n")
         return cropped
     
 
 def highlightText(input: MatLike, text_range: list) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
+    logger.debug("Highlighting text")
     text_region = np.array([[[text_range[0], text_range[0], text_range[0]], [text_range[1], text_range[1], text_range[1]]]]).astype(np.uint8)
     try:
         hsv_text_range = BGRToHSV(text_region)
         hsv = BGRToHSV(input)
     except cv2.error as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
         return input
 
     # Range of hsv should only care about the value rather than the hue and saturation (TODO More elegant solution)
@@ -254,7 +267,7 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     hsv_text_range[0][1][0] = preprocess_config.UPPER_RANGE
     hsv_text_range[0][1][1] = preprocess_config.UPPER_RANGE
 
-    # print(hsv_text_range)
+    logger.debug(f"HSV Range: {hsv_text_range[0][0]} - {hsv_text_range[0][1]}")
     mask = cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
     # return mask
     # return flipImage(cv2.bitwise_and(input, hsv, mask=mask))
@@ -264,7 +277,7 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     # return cv2.bitwise_and(input, mask)
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
-    # print(kernel)d
+    # print(kernel)
     dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.DILATE_ITER)
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -281,32 +294,34 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
 
     # return dilate
     # Verify that the final result here is the binarized output
+    logger.debug("Resulting higlighting\n")
     return flipImage(blurImage(cv2.bitwise_and(dilate, mask), 0.2))# Change blur after text extraction to be 0.5
 
 def preprocessImage(input: MatLike) -> MatLike:
     ''' Main process of preprocessing each step is separated into individual functions '''
-
+    logger.debug("Starting preprocess process")
     # Apply filters to image
     weighted = contrastImage(input)
+
     skewed = correctSkew(weighted)
+
     scaled = rescaleImage(skewed)
     # return scaled
-    # print(scaled.shape)
+
     blurred = blurImage(scaled)
 
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred)
-    # cv2.imshow("Note", note)
     # return note
+
     # Histogram analysis to determine the range of text colors
     text_range = findColorRange(note)
-
-    print(f"Text Color range (GRAY): {text_range}")
+    
     # return note
 
     # Exclude everything else except the actual text that make up the note
     result = highlightText(note, text_range)
-
+    logger.debug("Complete preprocessing process\n")
     return result
 
 
@@ -317,16 +332,17 @@ if __name__ == "__main__":
     # NCR generic sample retrieval
     image_path = "src/NCR_samples/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+    logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
     files = subprocess.check_output(["ls", image_path]).decode("utf-8")
     file_names = re.findall(IMAGE_REGEX, files)
-    # print(file_names)
+    logger.debug(f"File imported:\n{"\t".join(file_names)}\n")
 
     images = []
     for name in file_names:
         if os.path.exists(image_path + name):
             images.append(cv2.imread(f"{image_path}{name}"))
         else:
-            print(f"{name} not found in NCR_samples... skipping")
+            logger.warning(f"{name} not found in NCR_samples... skipping")
     
     for i in range(len(file_names)):
         result = preprocessImage(images[i])
@@ -335,4 +351,4 @@ if __name__ == "__main__":
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    print("Complete preprocess module")
+    logger.info("Complete preprocess module")
