@@ -62,6 +62,19 @@ def flipImage(input: MatLike) -> MatLike:
 
 def contrastImage(input: MatLike, contrast=preprocess_config.CONTRAST, brightness=preprocess_config.BRIGHTNESS):
     ''' Apply a contrast and brightness adjustment to the image '''
+    # # Testing new method of lab conversion
+    # lab = cv2.cvtColor(input, cv2.COLOR_BGR2LAB)
+
+    # l, a, b = cv2.split(lab)
+    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    # l = clahe.apply(l)
+
+    # lab = cv2.merge((l, a, b))
+    # enchanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+
+    # Old method
+    # weighted = cv2.normalize(input, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
     adjusted_image = cv2.addWeighted(input, contrast, np.zeros(input.shape, input.dtype), 0, brightness)
     return adjusted_image
 
@@ -155,7 +168,8 @@ def findColorRange(input: MatLike, k = 2) -> Set:
     text_range = color_ranges[text_label]
 
     # Convert this RGB range to GRAY range
-    text_range = [max(0, int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2]) + preprocess_config.MIN_RANGE), min(255, int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2]) + preprocess_config.MAX_RANGE)] # Add offset to handle boundary case values
+    text_range = [max(0, int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2]) + preprocess_config.MIN_RANGE), 
+                  min(255, int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2]) + preprocess_config.MAX_RANGE)] # Add offset to handle boundary case values
     # bg_range = [int(0.114 * bg_range[0][0] + 0.587 * bg_range[0][1] + 0.299 * bg_range[0][2]), int(0.114 * bg_range[1][0] + 0.587 * bg_range[1][1] + 0.299 * bg_range[1][2])]
     return text_range
 
@@ -182,8 +196,12 @@ def highlightBoundary(input: MatLike) -> MatLike:
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     x_box, y_box, min_width, min_height = float('inf'), float('inf'), 0, 0
 
+    if len(cnts) == 0:
+        return reversed
+    
     largest_contour = max(cnts, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(largest_contour)
+
     # If largest contour is too small try other method
     # print(f"Size: {w * h}")
     # print(f"Threshold: {0.4 * shaded.shape[0] * shaded.shape[1]}")
@@ -215,7 +233,7 @@ def highlightBoundary(input: MatLike) -> MatLike:
         if x_box == float('inf') or y_box == float('inf'):
             return reversed
         
-        cropped = reversed[y_box:min_height - 100, x_box:min_width]
+        cropped = reversed[y_box:min_height, x_box:min_width]
         return cropped
     
 
@@ -274,17 +292,16 @@ def preprocessImage(input: MatLike) -> MatLike:
     # return scaled
     # print(scaled.shape)
     blurred = blurImage(scaled)
-    # return blurred
 
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred)
+    # cv2.imshow("Note", note)
     # return note
     # Histogram analysis to determine the range of text colors
     text_range = findColorRange(note)
 
+    print(f"Text Color range (GRAY): {text_range}")
     # return note
-    # print(f"Text Color range (GRAY): {text_range}")
-    # print(f"Background Color Range (RGB): {bg_range}")
 
     # Exclude everything else except the actual text that make up the note
     result = highlightText(note, text_range)
