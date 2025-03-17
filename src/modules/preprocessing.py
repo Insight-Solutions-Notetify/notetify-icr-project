@@ -303,12 +303,13 @@ def preprocessImage(input: MatLike) -> MatLike:
     # Apply filters to image
     weighted = contrastImage(input)
 
-    skewed = correctSkew(weighted)
+    scaled = rescaleImage(weighted)
 
-    scaled = rescaleImage(skewed)
+    skewed = correctSkew(scaled)
+
     # return scaled
 
-    blurred = blurImage(scaled)
+    blurred = blurImage(skewed)
     return blurred
 
     # Exclude everything else except the region of the note
