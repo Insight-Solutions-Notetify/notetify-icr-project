@@ -2,3 +2,4 @@ __pycache__/
 env/
 emnist_model_*
 segmented_output/
+logs/

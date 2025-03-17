@@ -17,6 +17,7 @@ sys.path.insert(0, project_root)
 os.chdir(project_root)
 
 from src.config.preprocess_config import preprocess_config
+from src.modules.logger import logger
 
 ### PREPROCESS MODULE ###
 
@@ -310,7 +311,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 
 
 if __name__ == "__main__":
-    print("Testing preprocessing module")
+    logger.info("Testing preprocessing module")
 
     # Run through all the user-inputted files to ensure proper handling of images (basis)
     # NCR generic sample retrieval
