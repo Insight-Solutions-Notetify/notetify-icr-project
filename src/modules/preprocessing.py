@@ -97,6 +97,16 @@ def flipImage(input: MatLike) -> MatLike:
     
     return flipped
 
+def getThreshold(input: MatLike) -> MatLike:
+    ''' Get the threshold of the image '''
+    try:
+        threshold = cv2.threshold(input, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    except cv2.error as e:
+        logger.error(f"Error: {e}")
+        return input
+    
+    return threshold
+
 def contrastImage(input: MatLike, contrast=preprocess_config.CONTRAST, brightness=preprocess_config.BRIGHTNESS):
     ''' Apply a contrast and brightness adjustment to the image '''
     logger.debug(f"Applying a contrast value: {contrast}, brightness value: {brightness}")
@@ -125,10 +135,9 @@ def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike
 def rescaleImage(input: MatLike) -> MatLike:
     ''' Rescale images down to a standard acceptable for input '''
     logger.debug(f"Rescaling image to a maximum size of {preprocess_config.IMG_WIDTH}")
+
     img_width, img_height, _  = input.shape
-
     IMG_RATIO = img_width / img_height
-
     result = cv2.resize(input,(preprocess_config.IMG_WIDTH, int(preprocess_config.IMG_WIDTH * IMG_RATIO))) #, fx=IMG_RATIO, fy=IMG_RATIO)
 
     logger.debug(f"Original Shape: {input.shape}, Resized Shape: {result.shape}\n")  
@@ -145,7 +154,8 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
         return histogram, score
 
     gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
-    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    flipped = flipImage(gray)
+    thresh = getThreshold(flipped)
 
     scores = []
     angles = np.arange(-limit, limit + delta, delta)
@@ -164,13 +174,76 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
     logger.debug(f"Complete correctSkew()\n")
     return corrected
 
+
+@log_execution_time
+def highlightBoundary(input: MatLike, dilated=preprocess_config.DILATE_ITER, eroded=preprocess_config.ERODE_ITER,
+                      min_fac=preprocess_config.MIN_COUNTOUR_FACTOR,
+                      max_fac=preprocess_config.MAX_COUNTOUR_FACTOR,
+                      valid_ratio=preprocess_config.VALID_RATIO) -> MatLike:
+    ''' Removes any background apart from the medium where the text is located '''
+    logger.debug("Highlighting the boundary of the note image")
+
+    gray = BGRToGRAY(input)
+    flipped = flipImage(gray)
+    reversed = GRAYToBGR(flipped)
+    thresh = getThreshold(gray)
+
+    # old method
+    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
+    # dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
+    # cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # New method overwriting the previous one
+    edges = cv2.Canny(thresh, 50, 150) #
+    cnts = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Apply morphological operations to clean up image
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    dilated = cv2.dilate(thresh, kernel, iterations=dilated)
+    eroded = cv2.erode(dilated, kernel, iterations=eroded)
+    
+    # Find contours of the eroded image
+    cnts = cv2.findContours(eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+    if len(cnts) == 0:
+        return input
+    
+    # Draw contours to verify that the correct region is being selected
+    # cv2.drawContours(reversed, cnts, -1, (0, 255, 0), 2)
+    # return reversed
+
+    valid_counters = []
+    for c in cnts:
+        x, y, w, h = cv2.boundingRect(c)
+        area = cv2.contourArea(c)
+        aspect_ratio = w / float(h)
+        
+        min_area = min_fac * input.shape[0] * input.shape[1]
+        max_area = max_fac * input.shape[0] * input.shape[1]
+        if area > min_area and area < max_area and valid_ratio < aspect_ratio:
+            valid_counters.append(c)
+        
+    if valid_counters:
+        x_min = min([cv2.boundingRect(c)[0] for c in valid_counters])
+        y_min = min([cv2.boundingRect(c)[1] for c in valid_counters])
+        x_max = max([cv2.boundingRect(c)[0] + cv2.boundingRect(c)[2] for c in valid_counters])
+        y_max = max([cv2.boundingRect(c)[1] + cv2.boundingRect(c)[3] for c in valid_counters])
+
+    
+        cv2.rectangle(input, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
+        cropped = input[y_min:y_max, x_min:x_max]
+    else:
+        cropped = input
+
+    return cropped
+    
 @log_execution_time
 def findColorRange(input: MatLike, k = 2) -> Set:
     ''' Identify the color range for text and background by using k-clustering '''
     logger.debug("Finding text color range")
     shaded = BGRToShades(input)
     image = BGRToRGB(shaded)
-    return image
     
     pixels = image.reshape(-1, 3)
 
@@ -215,80 +288,6 @@ def findColorRange(input: MatLike, k = 2) -> Set:
     logger.debug(f"Text Color range (GRAY): {text_range}\n")
     return text_range
 
-@log_execution_time
-def highlightBoundary(input: MatLike, ) -> MatLike:
-    ''' Removes any background apart from the medium where the text is located '''
-    logger.debug("Highlighting the boundary of the note image")
-    gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
-    flipped = flipImage(gray)
-    reversed = cv2.cvtColor(flipped, cv2.COLOR_GRAY2BGR)
-    thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-    # return thresh
-
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
-    dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
-    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # # New method overwriting the previous one
-    # edges = cv2.Canny(thresh, 50, 150)
-    # cnts = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # # Draw contours to verify that the correct region is being selected
-    # cv2.drawContours(reversed, cnts[0], -1, (0, 255, 0), 2)
-    # return reversed
-    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-    x_box, y_box, min_width, min_height = float('inf'), float('inf'), 0, 0
-
-    if len(cnts) == 0:
-        return reversed
-    
-    ## Redundant code, why retrieve largest contour that could possibly be the entire image
-    largest_contour = max(cnts, key=cv2.contourArea)
-    x, y, w, h = cv2.boundingRect(largest_contour)
-    logger.debug(f"Largest Contour: {x}, {y}, {w}, {h}")
-    logger.debug(f"Threshold for largest contour: {w * h} > {preprocess_config.MAX_COUNTOUR_FACTOR * (gray.shape[0] * gray.shape[1])}")
-    # If largest contour is too small try other method
-    # print(f"Size: {w * h}")
-    # print(f"threshold: {prec * shaded.shape[0] * shaded.shape[1]}")
-    if w * h > preprocess_config.LARGEST_CONTOUR_THRESHOLD * (gray.shape[0] * gray.shape[1]) and w * h < gray.shape[0] * gray.shape[1]:
-        logger.warning(f"Using largest contour: {x}, {y}, {w}, {h}")
-        cropped = reversed[y:y + h, x:x + w]
-        logger.debug(f"Cropped Shape: {cropped.shape}\n")
-        return cropped
-    else:
-        logger.warning("Using multiple contours method")
-        for c in cnts:
-            x, y, w, h = cv2.boundingRect(c)
-            # logger.debug(f"Box: {x}, {y}, {w}, {h}")
-            # Ignore small contours and contours that match the image size
-            if w == gray.shape[1] or h == gray.shape[0]:
-                logger.debug("Ignoring contour that matches the image size")
-                continue
-            width_ratio = w / float(preprocess_config.IMG_WIDTH)
-            
-            # print(f"Width Ratio: {width_ratio}")
-            if width_ratio > preprocess_config.MIN_WIDTH_RATIO and width_ratio < preprocess_config.MAX_WIDTH_RATIO:
-                if (w * h) < preprocess_config.MIN_COUNTOUR_FACTOR * (gray.shape[0] * gray.shape[1]): # Ignore small contours
-                    logger.debug("Ignoring small contour")
-                    continue
-                if (w * h) > preprocess_config.MAX_COUNTOUR_FACTOR * (gray.shape[0] * gray.shape[1]): # Ignore large contours
-                    logger.debug("Ignoring large contour")
-                    continue
-                logger.debug(f"Candidate Box: {x}, {y}, {w}, {h}")
-                x_box = min(x_box, x)
-                y_box = min(y_box, y)
-                min_width = max(min_width,x + w)
-                min_height = max(min_height,y + h)
-
-        # print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
-        if x_box == float('inf') or y_box == float('inf'):
-            logger.error("No valid contour found")
-            return reversed
-        
-        cropped = reversed[y_box:min_height, x_box:min_width]
-        logger.debug(f"Cropped Shape: {cropped.shape}\n")
-        return cropped
-    
 @log_execution_time
 def highlightText(input: MatLike, text_range: list) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
@@ -349,8 +348,6 @@ def preprocessImage(input: MatLike) -> MatLike:
 
         skewed = correctSkew(scaled)
 
-        # return scaled
-
         blurred = blurImage(skewed)
 
         # Exclude everything else except the region of the note
@@ -359,7 +356,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 
         # Histogram analysis to determine the range of text colors
         text_range = findColorRange(note)
-        return text_range # Returning the shaded image for testing purposes
+        # return text_range # Returning the shaded image for testing purposes
 
         # Exclude everything else except the actual text that make up the note
         result = highlightText(note, text_range)
@@ -369,9 +366,11 @@ def preprocessImage(input: MatLike) -> MatLike:
         logger.error(f"Error: {e}")
         return None
     
+    # return weighted
     # return scaled
+    # return skewed
     # return blurred
-    # return note
+    return note
     return result
 
 
