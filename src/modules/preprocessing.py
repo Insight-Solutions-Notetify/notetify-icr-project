@@ -30,15 +30,14 @@ from src.modules.logger import logger, log_execution_time
 # - Range of desired shades of handwriting to be included
 # - Mask on desired range
 
-### NS4-28-converison-functions
-# Several functions for conversion should be accurate and verified 
-def BGRToShades(input: MatLike ) -> MatLike:
+# Should only use BGRToShades for finding the color range
+def BGRToShades(input: MatLike, shades = preprocess_config.SHADES ) -> MatLike:
     ''' Convert BGR to specialized Shades of GRAY'''
     gray_image = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
     gray_image = gray_image.astype(np.float32)/255
 
-    logger.debug(f"Shading by {preprocess_config.SHADES} colors")
-    result = 255 * np.floor(gray_image * preprocess_config.SHADES + 0.5) / preprocess_config.SHADES
+    logger.debug(f"Shading by {shades} colors")
+    result = 255 * np.floor(gray_image * shades + 0.5) / shades
     result = result.clip(0 ,255).astype(np.uint8)
     
     return result
@@ -92,14 +91,7 @@ def rescaleImage(input: MatLike) -> MatLike:
     logger.debug(f"Rescaling image to a maximum size of {preprocess_config.IMG_WIDTH}")
     img_width, img_height, _  = input.shape
 
-    # if img_width > preprocess_config.IMG_WIDTH:
-    #     IMG_RATIO = preprocess_config.IMG_WIDTH / img_width
-    # else:
-    #     IMG_RATIO = img_width / preprocess_config.IMG_WIDTH
-
     IMG_RATIO = img_width / img_height
-
-    # print(IMG_RATIO)
 
     result = cv2.resize(input,(preprocess_config.IMG_WIDTH, int(preprocess_config.IMG_WIDTH * IMG_RATIO))) #, fx=IMG_RATIO, fy=IMG_RATIO)
 
@@ -187,13 +179,12 @@ def findColorRange(input: MatLike, k = 2) -> Set:
     return text_range
 
 @log_execution_time
-def highlightBoundary(input: MatLike) -> MatLike:
+def highlightBoundary(input: MatLike, ) -> MatLike:
     ''' Removes any background apart from the medium where the text is located '''
     logger.debug("Highlighting the boundary of the note image")
-    flipped = flipImage(input)
-    shaded = BGRToShades(flipped)
-    reversed = cv2.cvtColor(shaded, cv2.COLOR_GRAY2BGR)
     gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+    flipped = flipImage(gray)
+    reversed = cv2.cvtColor(flipped, cv2.COLOR_GRAY2BGR)
     thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
@@ -201,12 +192,12 @@ def highlightBoundary(input: MatLike) -> MatLike:
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # New method overwriting the previous one
-    edges = cv2.Canny(gray, 50, 150)
-    cnts = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # edges = cv2.Canny(gray, 50, 150)
+    cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # return dilate
 
     # Draw contours to verify that the correct region is being selected
-    # cv2.drawContours(reversed, cnts[0], -1, (0, 255, 0), 2)
+    cv2.drawContours(reversed, cnts[0], -1, (0, 255, 0), 2)
     # return reversed
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     x_box, y_box, min_width, min_height = float('inf'), float('inf'), 0, 0
@@ -214,31 +205,39 @@ def highlightBoundary(input: MatLike) -> MatLike:
     if len(cnts) == 0:
         return reversed
     
+    ## Redundant code, why retrieve largest contour that could possibly be the entire image
     largest_contour = max(cnts, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(largest_contour)
-
+    logger.debug(f"Largest Contour: {x}, {y}, {w}, {h}")
+    logger.debug(f"Threshold for largest contour: {w * h} > {preprocess_config.MAX_COUNTOUR_FACTOR * (gray.shape[0] * gray.shape[1])}")
     # If largest contour is too small try other method
     # print(f"Size: {w * h}")
-    # print(f"threshold: {0.4 * shaded.shape[0] * shaded.shape[1]}")
-    if w * h > 0.2 * (shaded.shape[0] * shaded.shape[1]):
+    # print(f"threshold: {prec * shaded.shape[0] * shaded.shape[1]}")
+    if w * h > preprocess_config.MAX_COUNTOUR_FACTOR * (gray.shape[0] * gray.shape[1]):
+        logger.warning(f"Using largest contour: {x}, {y}, {w}, {h}")
         cropped = reversed[y:y + h, x:x + w]
+        logger.debug(f"Cropped Shape: {cropped.shape}\n")
         return cropped
     else:
+        logger.warning("Using multiple contours method")
         for c in cnts:
             x, y, w, h = cv2.boundingRect(c)
+            # logger.debug(f"Box: {x}, {y}, {w}, {h}")
             # Ignore small contours and contours that match the image size
-            # print(f"Width: {w}, Height: {h}")
-            if w == shaded.shape[1] or h == shaded.shape[0]:
+            if w == gray.shape[1] or h == gray.shape[0]:
+                logger.debug("Ignoring contour that matches the image size")
                 continue
             width_ratio = w / float(preprocess_config.IMG_WIDTH)
             
             # print(f"Width Ratio: {width_ratio}")
-            if width_ratio > 0.001 and width_ratio < 0.92:
-                if (w * h) < 0.1 * (shaded.shape[0] * shaded.shape[1]): # Ignore small contours
+            if width_ratio > preprocess_config.MIN_WIDTH_RATIO and width_ratio < preprocess_config.MAX_WIDTH_RATIO:
+                if (w * h) < preprocess_config.MIN_COUNTOUR_FACTOR * (gray.shape[0] * gray.shape[1]): # Ignore small contours
+                    logger.debug("Ignoring small contour")
                     continue
-                if (w * h) > 0.5 * (shaded.shape[0] * shaded.shape[1]): # Ignore large contours
+                if (w * h) > preprocess_config.MAX_COUNTOUR_FACTOR * (gray.shape[0] * gray.shape[1]): # Ignore large contours
+                    logger.debug("Ignoring large contour")
                     continue
-                # print(f"Box: {x}, {y}, {w}, {h}")
+                logger.debug(f"Candidate Box: {x}, {y}, {w}, {h}")
                 x_box = min(x_box, x)
                 y_box = min(y_box, y)
                 min_width = max(min_width,x + w)
@@ -246,6 +245,7 @@ def highlightBoundary(input: MatLike) -> MatLike:
 
         # print(f"Cropped Box: {x_box}, {y_box}, {min_width}, {min_height}")
         if x_box == float('inf') or y_box == float('inf'):
+            logger.error("No valid contour found")
             return reversed
         
         cropped = reversed[y_box:min_height, x_box:min_width]
@@ -328,7 +328,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 
     # return scaled
     # return blurred
-    # return note
+    return note
     return result
 
 
@@ -354,10 +354,19 @@ if __name__ == "__main__":
     
     for i in range(len(file_names)):
     # for i in range(0, 5):
-        result = preprocessImage(images[i])
-        cv2.imshow(file_names[i], result)
-        cv2.moveWindow(file_names[i], 0, 0)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        try:
+            logger.debug(f"Processing {file_names[i]}")
+            result = preprocessImage(images[i])
+            if result is None:
+                logger.warning(f"No result generated for {file_names[i]}")
+                raise Exception("No result found")
+            else:
+                cv2.imshow(file_names[i], result)
+                cv2.moveWindow(file_names[i], 0, 0)
+                cv2.waitKey(0)
+                cv2.destroyAllWindows()
+        except Exception as e:
+            logger.error(f"Error: {e}")
+            # return None # Would return when integrated with the main driver
 
     logger.info("Complete preprocess module")

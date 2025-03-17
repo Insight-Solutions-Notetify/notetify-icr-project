@@ -3,8 +3,8 @@ import numpy as np
 class PreprocessConfig:
 
     # Image Adjustment
-    BRIGHTNESS = -10
-    CONTRAST = 1.2
+    BRIGHTNESS = -50
+    CONTRAST = 1.8
 
     # Skewing Adjustments
     ANGLE_DELTA = 1
@@ -13,6 +13,11 @@ class PreprocessConfig:
     # Image Rescaling Parameters
     IMG_WIDTH = 800
 
+    # Contour Detection
+    MIN_WIDTH_RATIO = 0.001
+    MAX_WIDTH_RATIO = 0.92
+    MIN_COUNTOUR_FACTOR = 0.01
+    MAX_COUNTOUR_FACTOR = 0.2
     # Color Range
     MIN_RANGE = -15
     MAX_RANGE = 10
@@ -20,8 +25,6 @@ class PreprocessConfig:
     # Text Detection
     LOWER_RANGE = 0
     UPPER_RANGE = 255
-
-    # Shading
     SHADES = 8
 
     # Gaussian Blur
