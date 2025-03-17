@@ -106,7 +106,7 @@ def rescaleImage(input: MatLike) -> MatLike:
     logger.debug(f"Original Shape: {input.shape}, Resized Shape: {result.shape}\n")  
     return result
 
-def correctSkew(input: MatLike, delta=10, limit=40) -> MatLike:
+def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=preprocess_config.ANGLE_LIMIT) -> MatLike:
     ''' Correct skew of image'''
     logger.debug("Correcting skew of image")
     def determine_score(arr, angle):
@@ -309,6 +309,7 @@ def preprocessImage(input: MatLike) -> MatLike:
     # return scaled
 
     blurred = blurImage(scaled)
+    return blurred
 
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred)
@@ -344,7 +345,8 @@ if __name__ == "__main__":
         else:
             logger.warning(f"{name} not found in NCR_samples... skipping")
     
-    for i in range(len(file_names)):
+    # for i in range(len(file_names), ):
+    for i in range(0, 5):
         result = preprocessImage(images[i])
         cv2.imshow(file_names[i], result)
         cv2.moveWindow(file_names[i], 0, 0)
