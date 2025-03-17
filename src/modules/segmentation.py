@@ -15,10 +15,7 @@ sys.path.insert(0, project_root)
 os.chdir(project_root)
 
 from src.config.segmentation_config import segmentation_config
-
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from src.modules.logger import logger
 
 # TODO - Remove preprocess image function and config parameters (moved to segmentation_config)
 
@@ -200,19 +197,19 @@ def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
 
     # 3. Line segmentation
     lines = segment_lines(image)
-    logger.info(f"Detected {len(lines)} lines.")
+    logger.debug(f"Detected {len(lines)} lines.")
     save_images(lines, os.path.join(output_dir, "lines"), "line")
 
     # 4. Word segmentation (per line)
     for i, line in enumerate(lines):
         words = segment_words(line)
-        logger.info(f"Line {i + 1}: Detected {len(words)} words.")
+        logger.debug(f"Line {i + 1}: Detected {len(words)} words.")
         save_images(words, os.path.join(output_dir, f"line_{i + 1}_words"), "word")
 
         # 5. Character segmentation (per word)
         for j, word in enumerate(words):
             characters = segment_characters(word)
-            logger.info(f"Word {j + 1}: Detected {len(characters)} characters.")
+            logger.debug(f"Word {j + 1}: Detected {len(characters)} characters.")
             save_images(
                 characters,
                 os.path.join(output_dir, f"line_{i + 1}_word_{j + 1}_characters"),
@@ -220,7 +217,7 @@ def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
             )
 
 if __name__ == "__main__":
-    print("Testing segmentation module")
+    logger.info("Testing segmentation module")
 
     output_dir = "segmented_output"
 
@@ -244,4 +241,4 @@ if __name__ == "__main__":
         print(f"Segmenting image {file_names[i]}")
         segmented = segmentate_image(preprocessed, output_dir)
     
-    print("Complete segmentation module")
+    logger.info("Complete segmentation module")
