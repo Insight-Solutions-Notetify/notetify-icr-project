@@ -291,6 +291,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 
     return result
 
+
 if __name__ == "__main__":
     print("Testing preprocessing module")
 

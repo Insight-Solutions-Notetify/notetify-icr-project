@@ -1,13 +1,12 @@
 ## NOTETIFY
+
 Use virtual env for packages
 
 # Crate venv
-### NOTE: Python version <= 3.12 for this project to work
-python -m venv env
+python3 -m venv env
 
 # Run venv
-source env/Scripts/activate
-deactivate
+source env/bin/activate
 
 # Training
 To run training run python3 cnn_training.py
