@@ -3,7 +3,7 @@ import numpy as np
 class PreprocessConfig:
 
     # Image Adjustment
-    BRIGHTNESS = -50
+    BRIGHTNESS = -70
     CONTRAST = 1.8
 
     # Skewing Adjustments
@@ -25,7 +25,7 @@ class PreprocessConfig:
     # Text Detection
     LOWER_RANGE = 0
     UPPER_RANGE = 255
-    SHADES = 100
+    SHADES = 10
 
     # Gaussian Blur
     KERNEL_DIMS = 3

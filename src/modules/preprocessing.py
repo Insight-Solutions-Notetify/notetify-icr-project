@@ -33,33 +33,69 @@ from src.modules.logger import logger, log_execution_time
 # Should only use BGRToShades for finding the color range
 def BGRToShades(input: MatLike, shades = preprocess_config.SHADES ) -> MatLike:
     ''' Convert BGR to specialized Shades of GRAY'''
-    gray_image = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
-    gray_image = gray_image.astype(np.float32)/255
+    try:
+        gray_image = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+        gray_image = gray_image.astype(np.float32)/255
 
-    logger.debug(f"Shading by {shades} colors")
-    result = 255 * np.floor(gray_image * shades + 0.5) / shades
-    result = result.clip(0 ,255).astype(np.uint8)
+        logger.debug(f"Shading by {shades} colors")
+        result = 255 * np.floor(gray_image * shades + 0.5) / shades
+        result = result.clip(0 ,255).astype(np.uint8)
+    except cv2.error as e:
+        logger.error(f"Error: {e}")
+        return input
     
     return result
 
+def BGRToGRAY(input: MatLike) -> MatLike:
+    ''' Convert BGR to GRAY '''
+    try:
+        gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+    except cv2.error as e:
+        logger.error(f"Error: {e}")
+        return input
+    
+    return gray
+    
+
 def GRAYToBGR(input: MatLike) -> MatLike:
     ''' Convert GRAY to BGR '''
-    reverted = cv2.cvtColor(input, cv2.COLOR_GRAY2BGR)
+    try:
+        reverted = cv2.cvtColor(input, cv2.COLOR_GRAY2BGR)
+    except cv2.error as e:
+        logger.error(f"Error: {e}")
+        return input
+    
     return reverted
 
 def BGRToHSV(input: MatLike) -> MatLike:
     ''' Convert BGR to HSV '''
-    hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
+    try:
+        hsv = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
+    except cv2.error as e:
+        logger.error(f"Error: {e}")
+        return input
+    
     return hsv
 
 def BGRToRGB(input: MatLike) -> MatLike:
     ''' Convert BGR to RGB '''
-    rgb = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
+    try:
+        rgb = cv2.cvtColor(input, cv2.COLOR_BGR2RGB)
+    except cv2.error as e:
+        logger.error(f"Error: {e}")
+        return input
+    
     return rgb
 
 def flipImage(input: MatLike) -> MatLike:
     ''' Inverse of inputted image '''
-    return 255 - input
+    try:
+        flipped = cv2.bitwise_not(input)
+    except cv2.error as e:
+        logger.error(f"Error: {e}")
+        return input
+    
+    return flipped
 
 def contrastImage(input: MatLike, contrast=preprocess_config.CONTRAST, brightness=preprocess_config.BRIGHTNESS):
     ''' Apply a contrast and brightness adjustment to the image '''
@@ -123,8 +159,7 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
     (h, w) = input.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, best_angle, 1.0)
-    corrected = cv2.warpAffine(input, M, (w, h), flags=cv2.INTER_CUBIC,borderMode=cv2.BORDER_REPLICATE)
-
+    corrected = cv2.warpAffine(input, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT)
     logger.debug(f"Best Angle: {best_angle}")
     logger.debug(f"Complete correctSkew()\n")
     return corrected
@@ -133,7 +168,9 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
 def findColorRange(input: MatLike, k = 2) -> Set:
     ''' Identify the color range for text and background by using k-clustering '''
     logger.debug("Finding text color range")
-    image = BGRToRGB(input)
+    shaded = BGRToShades(input)
+    image = BGRToRGB(shaded)
+    return image
     
     pixels = image.reshape(-1, 3)
 
@@ -186,6 +223,7 @@ def highlightBoundary(input: MatLike, ) -> MatLike:
     flipped = flipImage(gray)
     reversed = cv2.cvtColor(flipped, cv2.COLOR_GRAY2BGR)
     thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+    # return thresh
 
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
     dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
@@ -193,12 +231,12 @@ def highlightBoundary(input: MatLike, ) -> MatLike:
 
     # New method overwriting the previous one
     # edges = cv2.Canny(gray, 50, 150)
-    cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # return dilate
 
     # Draw contours to verify that the correct region is being selected
     cv2.drawContours(reversed, cnts[0], -1, (0, 255, 0), 2)
-    # return reversed
+    return reversed
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     x_box, y_box, min_width, min_height = float('inf'), float('inf'), 0, 0
 
@@ -318,9 +356,11 @@ def preprocessImage(input: MatLike) -> MatLike:
 
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred)
+    return note # Temp because of line 362
 
     # Histogram analysis to determine the range of text colors
     text_range = findColorRange(note)
+    return text_range # Returning the shaded image for testing purposes
 
     # Exclude everything else except the actual text that make up the note
     result = highlightText(note, text_range)
