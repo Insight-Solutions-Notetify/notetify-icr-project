@@ -241,6 +241,7 @@ if __name__ == "__main__":
     
     for i in range(len(file_names)):
         preprocessed = preprocessing.preprocessImage(images[i])
+        print(f"Segmenting image {file_names[i]}")
         segmented = segmentate_image(preprocessed, output_dir)
     
     print("Complete segmentation module")
