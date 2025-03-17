@@ -242,7 +242,7 @@ if __name__ == "__main__":
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
     files = subprocess.check_output(f"ls {image_path}").decode("utf-8")
     file_names = re.findall(IMAGE_REGEX, files)
-    print(file_names)
+    # print(file_names)
 
     images = []
     for name in file_names:
@@ -253,7 +253,8 @@ if __name__ == "__main__":
     
     for i in range(len(file_names)):
         result = preprocessImage(images[i])
-        cv2.imshow(file_names[i], images[i])
+        cv2.imshow(file_names[i], result)
+        cv2.moveWindow(file_names[i], 0, 0)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
