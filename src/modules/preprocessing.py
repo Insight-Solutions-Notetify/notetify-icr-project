@@ -16,6 +16,7 @@ sys.path.insert(0, project_root)
 os.chdir(project_root)
 
 from src.config.preprocess_config import preprocess_config
+from src.modules.logger import logger
 
 ### PREPROCESS MODULE ###
 
@@ -234,13 +235,13 @@ def preprocessImage(input: MatLike) -> MatLike:
     return result
 
 if __name__ == "__main__":
-    print("Testing preprocessing module")
+    logger.info("Testing preprocessing module")
 
     # Run through all the user-inputted files to ensure proper handling of images (basis)
     # NCR generic sample retrieval
     image_path = "src/NCR_samples/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
-    files = subprocess.check_output(f"ls {image_path}").decode("utf-8")
+    files = subprocess.check_output(["ls", image_path]).decode("utf-8")
     file_names = re.findall(IMAGE_REGEX, files)
     # print(file_names)
 
