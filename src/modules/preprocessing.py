@@ -176,7 +176,10 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
 
 
 @log_execution_time
-def highlightBoundary(input: MatLike, dilated=preprocess_config.DILATE_ITER, eroded=preprocess_config.ERODE_ITER,
+def highlightBoundary(input: MatLike,
+                      kernel=preprocess_config.BOUND_KERNEL,
+                      dilated=preprocess_config.DILATE_ITER,
+                      eroded=preprocess_config.ERODE_ITER,
                       min_fac=preprocess_config.MIN_COUNTOUR_FACTOR,
                       max_fac=preprocess_config.MAX_COUNTOUR_FACTOR,
                       valid_ratio=preprocess_config.VALID_RATIO) -> MatLike:
@@ -184,21 +187,14 @@ def highlightBoundary(input: MatLike, dilated=preprocess_config.DILATE_ITER, ero
     logger.debug("Highlighting the boundary of the note image")
 
     gray = BGRToGRAY(input)
-    flipped = flipImage(gray)
-    reversed = GRAYToBGR(flipped)
     thresh = getThreshold(gray)
 
-    # old method
-    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 3))
-    # dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
-    # cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
     # New method overwriting the previous one
-    edges = cv2.Canny(thresh, 50, 150) #
+    edges = cv2.Canny(thresh, 50, 150)
     cnts = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Apply morphological operations to clean up image
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel)
     dilated = cv2.dilate(thresh, kernel, iterations=dilated)
     eroded = cv2.erode(dilated, kernel, iterations=eroded)
     
