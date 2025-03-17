@@ -8,6 +8,8 @@ import os
 import sys
 from typing import Set
 from collections import Counter
+import subprocess
+import re
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
@@ -231,106 +233,29 @@ def preprocessImage(input: MatLike) -> MatLike:
 
     return result
 
-
 if __name__ == "__main__":
     print("Testing preprocessing module")
-    
-    sample_1 = cv2.imread("src/images/black_sample.jpg")
-    sample_2 = cv2.imread("src/images/small.jpg")
-    sample_3 = cv2.imread("src/images/test_sample_2.jpg")
-    sample_4 = cv2.imread("src/images/pink_slanted.jpg")
-    sample_5 = cv2.imread("src/images/green_background.jpg")
-    sample_6 = cv2.imread("src/images/distraction_colors.jpg")
-    sample_7 = cv2.imread("src/images/problem_1.jpg")
-    sample_8 = cv2.imread("src/images/blue_slanted.jpg")
 
-    result = preprocessImage(sample_1)
-    cv2.imshow("Result: Blue Text", result)
-    result2 = preprocessImage(sample_2)
-    cv2.imshow("Result: Small", result2)
-    result3 = preprocessImage(sample_3)
-    cv2.imshow("Result: Scribble", result3)
-    cv2.waitKey(0)
-    reuslt4 = preprocessImage(sample_4)
-    cv2.imshow("Result: Pink Slanted", reuslt4)
-    result5 = preprocessImage(sample_5)
-    cv2.imshow("Result: Green Background", result5)
-    result6 = preprocessImage(sample_6)
-    cv2.waitKey(0)
-    cv2.imshow("Result: Distraction Colors", result6)
-    result7 = preprocessImage(sample_7)
-    cv2.imshow("Result: Problem 1", result7)
-    result8 = preprocessImage(sample_8)
-    cv2.imshow("Result: Blue Slanted", result8)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # Run through all the user-inputted files to ensure proper handling of images (basis)
+    # NCR generic sample retrieval
+    image_path = "src/NCR_samples/"
+    IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+    files = subprocess.check_output(f"ls {image_path}").decode("utf-8")
+    file_names = re.findall(IMAGE_REGEX, files)
+    # print(file_names)
+
+    images = []
+    for name in file_names:
+        if os.path.exists(image_path + name):
+            images.append(cv2.imread(f"{image_path}{name}"))
+        else:
+            print(f"{name} not found in NCR_samples... skipping")
+    
+    for i in range(len(file_names)):
+        result = preprocessImage(images[i])
+        cv2.imshow(file_names[i], result)
+        cv2.moveWindow(file_names[i], 0, 0)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     print("Complete preprocess module")
-
-
-# # # Check if the image is loaded
-# # if image is None:
-# #     raise FileNotFoundError("Image not loaded. Ensure 'black_sampel.jpg' exists in the same directory as the script.")
-
-# image = cv2.imread('src/images/black_sample.jpg')
-# # Convert BGR image to RGB
-# image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-# # Convert the image to grayscale
-# image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-# # Define the scale factors
-# scale_factor_1 = 3.0  # Increase size
-# scale_factor_2 = 1/3.0  # Decrease size
-
-# # Get the original image dimensions
-# height, width = image_rgb.shape[:2]
-
-# # Resize for zoomed image
-# new_height = int(height * scale_factor_1)
-# new_width = int(width * scale_factor_1)
-# zoomed_image = cv2.resize(image_rgb, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
-
-# # Resize for scaled image
-# new_height1 = int(height * scale_factor_2)
-# new_width1 = int(width * scale_factor_2)
-# scaled_image = cv2.resize(image_rgb, (new_width1, new_height1), interpolation=cv2.INTER_AREA)
-
-# # Convert the image to grayscale
-# image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-# # Define the scale factors
-# scale_factor_1 = 3.0  # Increase size
-# scale_factor_2 = 1/3.0  # Decrease size
-
-# # Get the original image dimensions
-
-# # Create subplots
-# fig, axs = plt.subplots(1, 4, figsize=(15, 4))
-
-
-# # SHOWING STEPS
-# # Plot the original image
-# axs[0].imshow(image_rgb)
-# axs[0].set_title(f'Original Image\nShape: {image_rgb.shape}')
-
-# # Plot the grayscale image
-# axs[1].imshow(image_gray, cmap='gray')  # Specify cmap for grayscale
-# axs[1].set_title(f'Grayscale Image\nShape: {image_gray.shape}')
-
-# # Plot the zoomed-in image
-# axs[2].imshow(zoomed_image)
-# axs[2].set_title(f'Zoomed Image\nShape: {zoomed_image.shape}')
-
-# # Plot the scaled-down image
-# axs[3].imshow(scaled_image)
-# axs[3].set_title(f'Scaled Image\nShape: {scaled_image.shape}')
-
-# # Remove axis ticks
-# for ax in axs:
-#     ax.set_xticks([])
-#     ax.set_yticks([])
-
-# # Display the images
-# plt.tight_layout()
-# plt.show()
