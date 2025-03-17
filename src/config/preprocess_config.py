@@ -3,8 +3,12 @@ import numpy as np
 class PreprocessConfig:
 
     # Image Adjustment
-    BRIGHTNESS = -50
+    BRIGHTNESS = -10
     CONTRAST = 1.2
+
+    # Skewing Adjustments
+    ANGLE_DELTA = 4
+    ANGLE_LIMIT = 45
 
     # Image Rescaling Parameters
     IMG_WIDTH = 800
