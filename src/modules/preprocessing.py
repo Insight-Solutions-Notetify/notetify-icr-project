@@ -113,7 +113,7 @@ def correctSkew(input: MatLike, delta=10, limit=40) -> MatLike:
     M = cv2.getRotationMatrix2D(center, best_angle, 1.0)
     corrected = cv2.warpAffine(input, M, (w, h), flags=cv2.INTER_CUBIC,borderMode=cv2.BORDER_REPLICATE)
 
-    print(f"Best Angle: {best_angle}")
+    # print(f"Best Angle: {best_angle}")
     return corrected
 
 def findColorRange(input: MatLike, k = 2) -> Set:
@@ -185,8 +185,8 @@ def highlightBoundary(input: MatLike) -> MatLike:
     largest_contour = max(cnts, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(largest_contour)
     # If largest contour is too small try other method
-    print(f"Size: {w * h}")
-    print(f"Threshold: {0.4 * shaded.shape[0] * shaded.shape[1]}")
+    # print(f"Size: {w * h}")
+    # print(f"Threshold: {0.4 * shaded.shape[0] * shaded.shape[1]}")
     if w * h > 0.2 * (shaded.shape[0] * shaded.shape[1]):
         cropped = reversed[y:y + h, x:x + w]
         return cropped
@@ -199,7 +199,7 @@ def highlightBoundary(input: MatLike) -> MatLike:
                 continue
             width_ratio = w / float(preprocess_config.IMG_WIDTH)
             
-            print(f"Width Ratio: {width_ratio}")
+            # print(f"Width Ratio: {width_ratio}")
             if width_ratio > 0.001 and width_ratio < 0.92:
                 if (w * h) < 0.1 * (shaded.shape[0] * shaded.shape[1]): # Ignore small contours
                     continue
