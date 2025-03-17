@@ -2,19 +2,43 @@ import logging
 import os
 import time
 from functools import wraps
-from typing import Any, Callable
+from typing import Any, Callable, Union
 
 import colorlog
 
+from dotenv import load_dotenv
 from src.config.logger_config import logger_config
 
+load_dotenv()
+
+def get_env_variable(var_name: str, default: Union[str, int, float, bool] = None) -> Union[str, int, float, bool]:
+    """
+    Get environment variable or return a default value
+    """
+    value = os.getenv(var_name, default)
+    if value is None:
+        if default is not None:
+            return default
+        else:
+            raise ValueError(f"Environment variable {var_name} is not set")
+        
+    # Convert value to appropriate type based on default
+    if isinstance(default, bool):
+        return value.lower() in ["true", "1", "yes", "on"]
+    elif isinstance(default, int):
+        return int(value)
+    elif isinstance(default, float):
+        return float(value)
+    return value
 
 def setup_logger(config=logger_config) -> logging.Logger:
     """
     Setup logger"
     """
+    load_dotenv()
+
     logger = logging.getLogger(config.LOGGER_NAME)
-    if logger_config.DEBUG_MODE:
+    if get_env_variable("DEBUG_MODE", False):
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
