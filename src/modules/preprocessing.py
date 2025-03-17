@@ -229,14 +229,13 @@ def highlightBoundary(input: MatLike, ) -> MatLike:
     dilate = cv2.dilate(thresh, kernel, iterations=preprocess_config.DILATE_ITER)
     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # New method overwriting the previous one
-    # edges = cv2.Canny(gray, 50, 150)
-    # cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # return dilate
+    # # New method overwriting the previous one
+    # edges = cv2.Canny(thresh, 50, 150)
+    # cnts = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Draw contours to verify that the correct region is being selected
-    cv2.drawContours(reversed, cnts[0], -1, (0, 255, 0), 2)
-    return reversed
+    # # Draw contours to verify that the correct region is being selected
+    # cv2.drawContours(reversed, cnts[0], -1, (0, 255, 0), 2)
+    # return reversed
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     x_box, y_box, min_width, min_height = float('inf'), float('inf'), 0, 0
 
@@ -251,7 +250,7 @@ def highlightBoundary(input: MatLike, ) -> MatLike:
     # If largest contour is too small try other method
     # print(f"Size: {w * h}")
     # print(f"threshold: {prec * shaded.shape[0] * shaded.shape[1]}")
-    if w * h > preprocess_config.MAX_COUNTOUR_FACTOR * (gray.shape[0] * gray.shape[1]):
+    if w * h > preprocess_config.LARGEST_CONTOUR_THRESHOLD * (gray.shape[0] * gray.shape[1]) and w * h < gray.shape[0] * gray.shape[1]:
         logger.warning(f"Using largest contour: {x}, {y}, {w}, {h}")
         cropped = reversed[y:y + h, x:x + w]
         logger.debug(f"Cropped Shape: {cropped.shape}\n")
@@ -342,33 +341,37 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
 def preprocessImage(input: MatLike) -> MatLike:
     ''' Main process of preprocessing each step is separated into individual functions '''
     logger.debug("Starting preprocess process")
+    try:
+        # Apply filters to image
+        weighted = contrastImage(input)
 
-    # Apply filters to image
-    weighted = contrastImage(input)
+        scaled = rescaleImage(weighted)
 
-    scaled = rescaleImage(weighted)
+        skewed = correctSkew(scaled)
 
-    skewed = correctSkew(scaled)
+        # return scaled
 
-    # return scaled
+        blurred = blurImage(skewed)
 
-    blurred = blurImage(skewed)
+        # Exclude everything else except the region of the note
+        note = highlightBoundary(blurred)
+        return note # Temp because of line 362
 
-    # Exclude everything else except the region of the note
-    note = highlightBoundary(blurred)
-    return note # Temp because of line 362
+        # Histogram analysis to determine the range of text colors
+        text_range = findColorRange(note)
+        return text_range # Returning the shaded image for testing purposes
 
-    # Histogram analysis to determine the range of text colors
-    text_range = findColorRange(note)
-    return text_range # Returning the shaded image for testing purposes
+        # Exclude everything else except the actual text that make up the note
+        result = highlightText(note, text_range)
+        logger.debug("Complete preprocessing process\n")
 
-    # Exclude everything else except the actual text that make up the note
-    result = highlightText(note, text_range)
-    logger.debug("Complete preprocessing process\n")
-
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        return None
+    
     # return scaled
     # return blurred
-    return note
+    # return note
     return result
 
 
@@ -407,6 +410,7 @@ if __name__ == "__main__":
                 cv2.destroyAllWindows()
         except Exception as e:
             logger.error(f"Error: {e}")
+            logger.debug("Return a None value to the main driver...")
             # return None # Would return when integrated with the main driver
 
     logger.info("Complete preprocess module")
