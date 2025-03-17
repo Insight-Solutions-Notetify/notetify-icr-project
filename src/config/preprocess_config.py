@@ -25,7 +25,7 @@ class PreprocessConfig:
     # Text Detection
     LOWER_RANGE = 0
     UPPER_RANGE = 255
-    SHADES = 8
+    SHADES = 100
 
     # Gaussian Blur
     KERNEL_DIMS = 3
