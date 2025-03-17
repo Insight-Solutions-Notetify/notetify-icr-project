@@ -7,8 +7,8 @@ class PreprocessConfig:
     CONTRAST = 1.2
 
     # Skewing Adjustments
-    ANGLE_DELTA = 4
-    ANGLE_LIMIT = 45
+    ANGLE_DELTA = 1
+    ANGLE_LIMIT = 70
 
     # Image Rescaling Parameters
     IMG_WIDTH = 800

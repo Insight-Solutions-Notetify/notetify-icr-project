@@ -122,7 +122,7 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
     angles = np.arange(-limit, limit + delta, delta)
     for angle in angles:
         histogram, score = determine_score(thresh, angle)
-        logger.debug(f"Angle: {angle}, Score: {score}")
+        # logger.debug(f"Angle: {angle}, Score: {score}")
         scores.append(score)
 
     best_angle = angles[scores.index(max(scores))]
@@ -294,12 +294,13 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
 
     # return dilate
     # Verify that the final result here is the binarized output
-    logger.debug("Resulting higlighting\n")
+    logger.debug("Resulting highlighting\n")
     return flipImage(blurImage(cv2.bitwise_and(dilate, mask), 0.2))# Change blur after text extraction to be 0.5
 
 def preprocessImage(input: MatLike) -> MatLike:
     ''' Main process of preprocessing each step is separated into individual functions '''
     logger.debug("Starting preprocess process")
+
     # Apply filters to image
     weighted = contrastImage(input)
 
@@ -310,20 +311,20 @@ def preprocessImage(input: MatLike) -> MatLike:
     # return scaled
 
     blurred = blurImage(skewed)
-    return blurred
 
     # Exclude everything else except the region of the note
     note = highlightBoundary(blurred)
-    # return note
 
     # Histogram analysis to determine the range of text colors
     text_range = findColorRange(note)
-    
-    # return note
 
     # Exclude everything else except the actual text that make up the note
     result = highlightText(note, text_range)
     logger.debug("Complete preprocessing process\n")
+
+    # return scaled
+    # return blurred
+    # return note
     return result
 
 
@@ -346,8 +347,8 @@ if __name__ == "__main__":
         else:
             logger.warning(f"{name} not found in NCR_samples... skipping")
     
-    # for i in range(len(file_names), ):
-    for i in range(0, 5):
+    for i in range(len(file_names)):
+    # for i in range(0, 5):
         result = preprocessImage(images[i])
         cv2.imshow(file_names[i], result)
         cv2.moveWindow(file_names[i], 0, 0)
