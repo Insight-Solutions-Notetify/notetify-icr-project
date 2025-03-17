@@ -14,12 +14,14 @@ class PreprocessConfig:
     IMG_WIDTH = 800
 
     # Contour Detection
-    LARGEST_CONTOUR_THRESHOLD = 0.7
+    DILATE_ITER = 2
+    ERODE_ITER = 9
+    LARGEST_CONTOUR_THRESHOLD = 0.5
 
     MIN_WIDTH_RATIO = 0.001
     MAX_WIDTH_RATIO = 0.92
-    MIN_COUNTOUR_FACTOR = 0.01
-    MAX_COUNTOUR_FACTOR = 0.5
+    MIN_COUNTOUR_FACTOR = 0.05
+    MAX_COUNTOUR_FACTOR = 0.6
 
     # Color Range
     MIN_RANGE = -15
