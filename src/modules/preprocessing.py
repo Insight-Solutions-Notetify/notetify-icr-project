@@ -461,8 +461,17 @@ if __name__ == "__main__":
                 raise Exception("No result found")
             else:
                 cv2.imshow(file_names[i], result)
-                cv2.moveWindow(file_names[i], 0, 0)
-                cv2.waitKey(0)
+                print("Press 'space' to continue to the next image")
+                print("Press 'q' to quit")
+                while True:
+                    key = cv2.waitKey(1) & 0xFF
+                    if key == 32:
+                        break
+                    if key == ord('q'):
+                        print("Quitting...")
+                        exit()
+                    cv2.moveWindow(file_names[i], 0, 0)
+
                 cv2.destroyAllWindows()
         except Exception as e:
             logger.error(f"Error: {e}")
