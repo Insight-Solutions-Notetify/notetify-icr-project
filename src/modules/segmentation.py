@@ -229,7 +229,8 @@ if __name__ == "__main__":
     logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
     files = subprocess.check_output(["ls", image_path]).decode("utf-8")
     file_names = re.findall(IMAGE_REGEX, files)
-    logger.debug(f"File imported:\n{"\t".join(file_names)}\n")
+    joined = "\n".join(file_names)
+    logger.debug(f"File imported:\n{joined}\n")
 
     images = []
     for name in file_names:
@@ -242,5 +243,8 @@ if __name__ == "__main__":
         preprocessed = preprocessing.preprocessImage(images[i])
         logger.debug(f"Segmenting image {file_names[i]}")
         segmented = segmentate_image(preprocessed, output_dir)
+        event = input("Press Enter to continue...\nPress q to exit...")
+        if event == "q":
+            break
     
     logger.info("Complete segmentation module")
