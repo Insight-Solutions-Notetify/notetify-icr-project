@@ -3,8 +3,8 @@ import numpy as np
 class PreprocessConfig:
 
     # Image Adjustment
-    BRIGHTNESS = -70
-    CONTRAST = 1.8
+    BRIGHTNESS = -50
+    CONTRAST = 1
 
     # Skewing Adjustments
     ANGLE_DELTA = 1
@@ -26,6 +26,10 @@ class PreprocessConfig:
     MIN_RANGE = -15
     MAX_RANGE = 10
 
+    # Dynamic Image Adjustments
+    BRIGHTNESS_DELTA = 10
+    CONTRAST_DELTA = 0.5
+
     # Text Detection
     SHADES = 8
     LOWER_RANGE = 0
@@ -37,7 +41,9 @@ class PreprocessConfig:
 
     # NEED to change this variable names for highlightText
     # Horizontal projection for text lines
-    KERNEL_RATIO = (3, 5)
+    HORIZONTAL_KERNEL = (20, 1)
+    HORIZONTAL_ITER = 1
+    KERNEL_RATIO = (1, 3)
     HIGH_DILATE_ITER = 1
     MAX_AR = 10
     MIN_AREA = 4
