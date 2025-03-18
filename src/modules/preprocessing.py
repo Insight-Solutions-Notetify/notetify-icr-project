@@ -279,9 +279,12 @@ def findColorRange(input: MatLike, k = 2) -> Set:
     # Convert this RGB range to GRAY range
     text_range = [max(0, int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2]) + preprocess_config.MIN_RANGE), 
                   min(255, int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2]) + preprocess_config.MAX_RANGE)] # Add offset to handle boundary case values
-    # bg_range = [int(0.114 * bg_range[0][0] + 0.587 * bg_range[0][1] + 0.299 * bg_range[0][2]), int(0.114 * bg_range[1][0] + 0.587 * bg_range[1][1] + 0.299 * bg_range[1][2])]
-    logger.debug(f"Text Color range (GRAY): {text_range}\n")
-    return text_range
+    bg_range = [max(0, int(0.114 * bg_range[0][0] + 0.587 * bg_range[0][1] + 0.299 * bg_range[0][2])),
+                min(255, int(0.114 * bg_range[1][0] + 0.587 * bg_range[1][1] + 0.299 * bg_range[1][2]))]
+
+    logger.debug(f"Text Color range (GRAY): {text_range}")
+    logger.debug(f"Background Color range (GRAY): {bg_range}")
+    return text_range, bg_range
 
 @log_execution_time
 def highlightText(input: MatLike, text_range: list) -> MatLike:
@@ -412,8 +415,7 @@ def preprocessImage(input: MatLike) -> MatLike:
         note = highlightBoundary(blurred)
 
         # Histogram analysis to determine the range of text colors
-        text_range = findColorRange(note)
-        # return text_range # Returning the shaded image for testing purposes
+        text_range, bg_range= findColorRange(note)
 
         # Exclude everything else except the actual text that make up the note
         result = highlightText(note, text_range)
@@ -427,7 +429,7 @@ def preprocessImage(input: MatLike) -> MatLike:
     # return scaled
     # return skewed
     # return blurred
-    # return note
+    return note
     return result
 
 
