@@ -227,7 +227,7 @@ def highlightBoundary(input: MatLike,
         y_max = max([cv2.boundingRect(c)[1] + cv2.boundingRect(c)[3] for c in valid_counters])
 
     
-        cv2.rectangle(input, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
+        # cv2.rectangle(input, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
         cropped = input[y_min:y_max, x_min:x_max]
     else:
         cropped = input
@@ -238,9 +238,8 @@ def highlightBoundary(input: MatLike,
 def findColorRange(input: MatLike, k = 2) -> Set:
     ''' Identify the color range for text and background by using k-clustering '''
     logger.debug("Finding text color range")
-    shaded = BGRToShades(input)
-    image = BGRToRGB(shaded)
-    
+    flip = flipImage(input)
+    image = BGRToRGB(flip)
     pixels = image.reshape(-1, 3)
 
     #K-Means Clustering
@@ -288,49 +287,113 @@ def findColorRange(input: MatLike, k = 2) -> Set:
 def highlightText(input: MatLike, text_range: list) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
     logger.debug("Highlighting text")
-    text_region = np.array([[[text_range[0], text_range[0], text_range[0]], [text_range[1], text_range[1], text_range[1]]]]).astype(np.uint8)
+    
+    text_region = np.array([[[text_range[0], text_range[0], text_range[0]], 
+                              [text_range[1], text_range[1], text_range[1]]]]).astype(np.uint8)
+    
     try:
         hsv_text_range = BGRToHSV(text_region)
-        hsv = BGRToHSV(input)
+        shaded = BGRToShades(input)
+        flip = flipImage(shaded)
+        reverted = GRAYToBGR(flip)
+        hsv = BGRToHSV(reverted)
     except cv2.error as e:
         logger.error(f"Error: {e}")
         return input
 
-    # Range of hsv should only care about the value rather than the hue and saturation (TODO More elegant solution)
+    # Ensure range only considers value, not hue/saturation
     hsv_text_range[0][0][0] = preprocess_config.LOWER_RANGE
     hsv_text_range[0][0][1] = preprocess_config.LOWER_RANGE
     hsv_text_range[0][1][0] = preprocess_config.UPPER_RANGE
     hsv_text_range[0][1][1] = preprocess_config.UPPER_RANGE
 
     logger.debug(f"HSV Range: {hsv_text_range[0][0]} - {hsv_text_range[0][1]}")
+
     mask = cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
-    # return mask
-    # return flipImage(cv2.bitwise_and(input, hsv, mask=mask))
 
-    # mask = cv2.inRange(hsv, preprocess_config.LOWER_MASK, preprocess_config.UPPER_MASK)
-
-    # return cv2.bitwise_and(input, mask)
-
+    # Apply noise reduction before dilation
+    mask = cv2.medianBlur(mask, 3)
+    
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
-    # print(kernel)
-    dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.DILATE_ITER)
-    cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    closed_mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-    # Remove contours that are too small to be text
-    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-    # print(len(cnts))
+    # Dilate text regions while preserving size constraints
+    dilate = cv2.dilate(closed_mask, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
+    
+    cnts, _ = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Remove contours that are too small or too elongated (likely lines)
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         ar = w / float(h)
-        # print(ar)
-        if ar < preprocess_config.ASPECT_RATIO:
-            # print(ar)
-            cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
+        area = cv2.contourArea(c)
 
-    # return dilate
-    # Verify that the final result here is the binarized output
-    logger.debug("Resulting highlighting\n")
-    return flipImage(blurImage(cv2.bitwise_and(dilate, mask), 0.2))# Change blur after text extraction to be 0.5
+        # Ignore contours that are likely horizontal or vertical lines
+        if h < preprocess_config.MIN_HEIGHT or ar > preprocess_config.MAX_AR:
+            logger.info(f"Ignoring line-like contour at ({x}, {y}) with AR: {ar}, H: {h}")
+            continue
+
+        if area > preprocess_config.MIN_AREA:
+            
+            cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)  # Purplish Blue (Valid Text)
+        else:
+            logger.warning(f"Keeping small contour with AR: {ar}, AREA: {area}")
+            cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)  # Yellow (Possible Small Text)
+
+    logger.debug("Resulting highlighting complete")
+    return flipImage(blurImage(cv2.bitwise_and(dilate, flipImage(mask)), 0.2))# Change blur after text extraction to be 0.5
+
+# @log_execution_time
+# def highlightText(input: MatLike, text_range: list) -> MatLike:
+#     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
+#     logger.debug("Highlighting text")
+#     text_region = np.array([[[text_range[0], text_range[0], text_range[0]], [text_range[1], text_range[1], text_range[1]]]]).astype(np.uint8)
+#     try:
+#         hsv_text_range = BGRToHSV(text_region)
+#         shaded = BGRToShades(input)
+#         flip = flipImage(shaded)
+#         reverted = GRAYToBGR(flip)
+#         hsv = BGRToHSV(reverted)
+#     except cv2.error as e:
+#         logger.error(f"Error: {e}")
+#         return input
+
+#     # Range of hsv should only care about the value rather than the hue and saturation (TODO More elegant solution)
+#     hsv_text_range[0][0][0] = preprocess_config.LOWER_RANGE
+#     hsv_text_range[0][0][1] = preprocess_config.LOWER_RANGE
+#     hsv_text_range[0][1][0] = preprocess_config.UPPER_RANGE
+#     hsv_text_range[0][1][1] = preprocess_config.UPPER_RANGE
+
+#     logger.debug(f"HSV Range: {hsv_text_range[0][0]} - {hsv_text_range[0][1]}")
+#     mask = cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
+
+#     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
+#     # print(kernel)
+#     dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
+#     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+#     # Remove contours that are too small to be text
+#     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+#     # print(len(cnts))
+#     for c in cnts:
+#         x, y, w, h = cv2.boundingRect(c)
+#         ar = w / float(h)
+#         area = cv2.contourArea(c)
+#         if ar > preprocess_config.ASPECT_RATIO: # Greater than 10 (10:1)
+#             cv2.drawContours(hsv, [c], -1, (200, 150, 150), -1) # Blue
+#         elif area > preprocess_config.MIN_AREA: # Less than 10 pixels
+#             cv2.drawContours(hsv, [c], -1, (250, 150, 150), -1) # Purplish Blue
+#         else:
+#             logger.warning(f"Keeping contour with AR: {ar}, AREA: {area}")
+#             cv2.drawContours(hsv, [c], -1, (50, 150, 150), -1) # Yellow
+
+    
+
+#     print(dilate.shape)
+#     return hsv
+#     # Verify that the final result here is the binarized output
+#     logger.debug("Resulting highlighting\n")
+#     return flipImage(blurImage(cv2.bitwise_and(dilate, mask), 0.2))# Change blur after text extraction to be 0.5
 
 @log_execution_time
 def preprocessImage(input: MatLike) -> MatLike:
@@ -346,9 +409,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 
         blurred = blurImage(skewed)
 
-        # Exclude everything else except the region of the note
         note = highlightBoundary(blurred)
-        return note # Temp because of line 362
 
         # Histogram analysis to determine the range of text colors
         text_range = findColorRange(note)
@@ -366,7 +427,7 @@ def preprocessImage(input: MatLike) -> MatLike:
     # return scaled
     # return skewed
     # return blurred
-    return note
+    # return note
     return result
 
 

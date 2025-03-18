@@ -22,19 +22,14 @@ class PreprocessConfig:
     MAX_COUNTOUR_FACTOR = 0.9
     VALID_RATIO = 0.5
 
-    LARGEST_CONTOUR_THRESHOLD = 0.5
-
-    MIN_WIDTH_RATIO = 0.001
-    MAX_WIDTH_RATIO = 0.92
-
     # Color Range
     MIN_RANGE = -15
     MAX_RANGE = 10
 
     # Text Detection
+    SHADES = 8
     LOWER_RANGE = 0
     UPPER_RANGE = 255
-    SHADES = 10
 
     # Gaussian Blur
     KERNEL_DIMS = 3
@@ -42,9 +37,11 @@ class PreprocessConfig:
 
     # NEED to change this variable names for highlightText
     # Horizontal projection for text lines
-    KERNEL_RATIO = (3, 6)
-    # DILATE_ITER = 4
-    ASPECT_RATIO = 1.1
+    KERNEL_RATIO = (3, 5)
+    HIGH_DILATE_ITER = 1
+    MAX_AR = 10
+    MIN_AREA = 4
+    MIN_HEIGHT = 10
     
 
 preprocess_config = PreprocessConfig()
