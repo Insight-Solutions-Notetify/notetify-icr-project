@@ -9,6 +9,7 @@ import subprocess
 import re
 import logging
 import preprocessing
+import matplotlib.pyplot as plt
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
@@ -149,13 +150,36 @@ def segment_words(line_image, min_gap=segmentation_config.MIN_WORD_GAP):
         logger.error(f"Error in word segmentation: {e}")
         return []
 
-def segment_characters(word_image, min_char_size=segmentation_config.MIN_CHAR_SIZE):
+def segment_characters(word_image: MatLike, min_char_size=segmentation_config.MIN_CHAR_SIZE):
     """
     Segment a word image into individual characters using contour detection.
     """
     try:
+        # Convert to binary image
+        word_image = cv2.threshold(word_image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        # Convert 255 to 1
+        binary = word_image // MAX_VALUE
+
+        print(word_image.shape[1])
+        
         # We assume word_image is already binarized
-        contours, _ = cv2.findContours(word_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # contours, _ = cv2.findContours(word_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        vertical = np.sum(binary, axis=0)
+        plt.plot(range(len(vertical)), vertical)
+        plt.title("Vertical Projection")
+        plt.show()
+
+        # GAP_THRESHOLD = vertical.max() * 0.9
+        # # Keep only the x-coordinates where ther are gaps
+        # gaps = np.where(vertical > GAP_THRESHOLD)[0]
+        # if len(gaps) == 0:
+        #     logger.warning("No character gaps detected.")
+
+        # # Draw the gaps on the image
+        # for gap in gaps:
+        #     cv2.line(word_image, (gap, 0), (gap, word_image.shape[0]), 0, 1)
+
+        return word_image
         characters = []
 
         # Sort contours from left-to-right by x-coordinate
@@ -217,6 +241,20 @@ def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
             )
     logger.debug("Complete segmentation\n")
 
+def test_character_segmentation(word: str, output_dir: str) -> None:
+    """
+    Test the character segmentation function on a sample image of words.
+    """
+    logger.debug("Testing character segmentation alone")
+    image = cv2.imread(f"./src/NCR_samples/{word}", cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        logger.error(f"Image not found at {word}")
+        return
+    characters = segment_characters(image)
+    logger.debug(f"Detected {len(characters)} characters.")
+    save_images([characters], os.path.join(output_dir, f"words_{word}"), "word" )
+    logger.debug("Character segmentation test complete.")
+
 if __name__ == "__main__":
     logger.info("Testing segmentation module")
 
@@ -242,9 +280,6 @@ if __name__ == "__main__":
     for i in range(len(file_names)):
         # preprocessed = preprocessing.preprocessImage(images[i])
         logger.debug(f"Segmenting image {file_names[i]}")
-        segmented = segmentate_image(file_names[i], output_dir)
-        event = input("Press Enter to continue...\nPress q to exit...")
-        if event == "q":
-            break
+        segmented = test_character_segmentation(file_names[i], output_dir)
     
     logger.info("Complete segmentation module")
