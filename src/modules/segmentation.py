@@ -240,9 +240,9 @@ if __name__ == "__main__":
             logger.warning(f"{name} not found in NCR_samples... skipping")
     
     for i in range(len(file_names)):
-        preprocessed = preprocessing.preprocessImage(images[i])
+        # preprocessed = preprocessing.preprocessImage(images[i])
         logger.debug(f"Segmenting image {file_names[i]}")
-        segmented = segmentate_image(preprocessed, output_dir)
+        segmented = segmentate_image(file_names[i], output_dir)
         event = input("Press Enter to continue...\nPress q to exit...")
         if event == "q":
             break
