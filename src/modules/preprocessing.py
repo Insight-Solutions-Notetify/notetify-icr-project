@@ -9,6 +9,7 @@ import sys
 from typing import Set
 from collections import Counter
 from scipy.ndimage import rotate
+from scipy.interpolate import interp1d
 import subprocess
 import re
 
@@ -107,25 +108,28 @@ def getThreshold(input: MatLike) -> MatLike:
     
     return threshold
 
-def contrastImage(input: MatLike, contrast=preprocess_config.CONTRAST, brightness=preprocess_config.BRIGHTNESS):
+def contrastImage(input: MatLike, bg_range=None, contrast=preprocess_config.CONTRAST, brightness=preprocess_config.BRIGHTNESS):
     ''' Apply a contrast and brightness adjustment to the image '''
-    logger.debug(f"Applying a contrast value: {contrast}, brightness value: {brightness}")
-    # # Testing new method of lab conversion
-    # lab = cv2.cvtColor(input, cv2.COLOR_BGR2LAB)
-
-    # l, a, b = cv2.split(lab)
-    # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    # l = clahe.apply(l)
-
-    # lab = cv2.merge((l, a, b))
-    # enchanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
-
-    # Old method
-    # weighted = cv2.normalize(input, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-    adjusted_image = cv2.addWeighted(input, contrast, np.zeros(input.shape, input.dtype), 0, brightness)
+    if bg_range is not None:
+        logger.debug(f"Adjusting image to background range: {bg_range}")
+        lower, upper = bg_range
+        m = interp1d([0, 255], [0, 1])
+        value = m(lower)
+        logger.warning(f"Interploating lower value: {lower} to range (-1 to 1) New Value: {value}")
+        logger.debug(f"Applying a contrast value: {1 + (value * preprocess_config.CONTRAST_DELTA)}, brightness value: {value * preprocess_config.BRIGHTNESS_DELTA}")
+        adjusted_image = cv2.addWeighted(input, 1 + (value * preprocess_config.CONTRAST_DELTA), np.zeros(input.shape, input.dtype), 0, value * preprocess_config.BRIGHTNESS_DELTA)
+    else:
+        logger.debug(f"Applying a contrast value: {contrast}, brightness value: {brightness}")
+        adjusted_image = cv2.addWeighted(input, contrast, np.zeros(input.shape, input.dtype), 0, brightness)
+    
     logger.debug("Contrast Complete\n")
     return adjusted_image
+
+# def adjustGamma(input: MatLike, gamma=1.0):
+#     ''' Adjust gamma of the image '''
+#     invGamma = 1.0 / gamma
+#     table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+#     return cv2.LUT(input, table)
 
 def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike:
     logger.debug(f"Applying blur with strength {sigma}")
@@ -277,13 +281,13 @@ def findColorRange(input: MatLike, k = 2) -> Set:
     logger.debug(f"Text Color range (BGR): {text_range}")
 
     # Convert this RGB range to GRAY range
-    text_range = [max(0, int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2]) + preprocess_config.MIN_RANGE), 
-                  min(255, int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2]) + preprocess_config.MAX_RANGE)] # Add offset to handle boundary case values
+    text_range = [max(0, int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2])), 
+                  min(255, int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2]))] # Add offset to handle boundary case values
     bg_range = [max(0, int(0.114 * bg_range[0][0] + 0.587 * bg_range[0][1] + 0.299 * bg_range[0][2])),
                 min(255, int(0.114 * bg_range[1][0] + 0.587 * bg_range[1][1] + 0.299 * bg_range[1][2]))]
 
     logger.debug(f"Text Color range (GRAY): {text_range}")
-    logger.debug(f"Background Color range (GRAY): {bg_range}")
+    logger.warning(f"Background Color range (GRAY): {bg_range}")
     return text_range, bg_range
 
 @log_execution_time
@@ -291,6 +295,8 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
     logger.debug("Highlighting text")
     
+    text_range = [max(0, text_range[0] + preprocess_config.MIN_RANGE), min(255, text_range[1] + preprocess_config.MAX_RANGE)]
+    logger.debug(f"Text Range: {text_range}")
     text_region = np.array([[[text_range[0], text_range[0], text_range[0]], 
                               [text_range[1], text_range[1], text_range[1]]]]).astype(np.uint8)
     
@@ -312,91 +318,49 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
 
     logger.debug(f"HSV Range: {hsv_text_range[0][0]} - {hsv_text_range[0][1]}")
 
-    mask = cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
-
+    original_mask= cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
+    # cv2.imshow("Original Mask", original_mask)
     # Apply noise reduction before dilation
-    mask = cv2.medianBlur(mask, 3)
+    mask = cv2.medianBlur(original_mask, 3)
     
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
-    closed_mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+    # ** Step 1: Detect and Remove Horizontal Lines **
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.HORIZONTAL_KERNEL)
+    detected_lines = cv2.morphologyEx(mask, cv2.MORPH_OPEN, horizontal_kernel, iterations=preprocess_config.HORIZONTAL_ITER)
 
-    # Dilate text regions while preserving size constraints
-    dilate = cv2.dilate(closed_mask, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
-    
+    # Subtract detected lines from mask
+    mask_no_lines = cv2.subtract(mask, detected_lines)
+
+    # ** Step 2: Fill Missing Spaces (Interpolation) **
+    inpainted = cv2.inpaint(mask_no_lines, detected_lines, inpaintRadius=2, flags=cv2.INPAINT_TELEA)
+
+    # ** Step 3: Dilation and Contour Detection **
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
+    dilate = cv2.dilate(inpainted, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
+    cv2.imshow("Before Dilate", dilate)
+
     cnts, _ = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    logger.debug(f"Number of contours: {len(cnts)}")
 
     # Remove contours that are too small or too elongated (likely lines)
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         ar = w / float(h)
         area = cv2.contourArea(c)
-
-        # Ignore contours that are likely horizontal or vertical lines
+        
+        # Ignore contours that are likely horizontal lines
         if h < preprocess_config.MIN_HEIGHT or ar > preprocess_config.MAX_AR:
             logger.info(f"Ignoring line-like contour at ({x}, {y}) with AR: {ar}, H: {h}")
             continue
 
-        if area > preprocess_config.MIN_AREA:
-            
+        if area < preprocess_config.MIN_AREA:
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)  # Purplish Blue (Valid Text)
         else:
             logger.warning(f"Keeping small contour with AR: {ar}, AREA: {area}")
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)  # Yellow (Possible Small Text)
 
     logger.debug("Resulting highlighting complete")
-    return flipImage(blurImage(cv2.bitwise_and(dilate, flipImage(mask)), 0.2))# Change blur after text extraction to be 0.5
-
-# @log_execution_time
-# def highlightText(input: MatLike, text_range: list) -> MatLike:
-#     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
-#     logger.debug("Highlighting text")
-#     text_region = np.array([[[text_range[0], text_range[0], text_range[0]], [text_range[1], text_range[1], text_range[1]]]]).astype(np.uint8)
-#     try:
-#         hsv_text_range = BGRToHSV(text_region)
-#         shaded = BGRToShades(input)
-#         flip = flipImage(shaded)
-#         reverted = GRAYToBGR(flip)
-#         hsv = BGRToHSV(reverted)
-#     except cv2.error as e:
-#         logger.error(f"Error: {e}")
-#         return input
-
-#     # Range of hsv should only care about the value rather than the hue and saturation (TODO More elegant solution)
-#     hsv_text_range[0][0][0] = preprocess_config.LOWER_RANGE
-#     hsv_text_range[0][0][1] = preprocess_config.LOWER_RANGE
-#     hsv_text_range[0][1][0] = preprocess_config.UPPER_RANGE
-#     hsv_text_range[0][1][1] = preprocess_config.UPPER_RANGE
-
-#     logger.debug(f"HSV Range: {hsv_text_range[0][0]} - {hsv_text_range[0][1]}")
-#     mask = cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
-
-#     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
-#     # print(kernel)
-#     dilate = cv2.dilate(mask, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
-#     cnts = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-#     # Remove contours that are too small to be text
-#     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-#     # print(len(cnts))
-#     for c in cnts:
-#         x, y, w, h = cv2.boundingRect(c)
-#         ar = w / float(h)
-#         area = cv2.contourArea(c)
-#         if ar > preprocess_config.ASPECT_RATIO: # Greater than 10 (10:1)
-#             cv2.drawContours(hsv, [c], -1, (200, 150, 150), -1) # Blue
-#         elif area > preprocess_config.MIN_AREA: # Less than 10 pixels
-#             cv2.drawContours(hsv, [c], -1, (250, 150, 150), -1) # Purplish Blue
-#         else:
-#             logger.warning(f"Keeping contour with AR: {ar}, AREA: {area}")
-#             cv2.drawContours(hsv, [c], -1, (50, 150, 150), -1) # Yellow
-
-    
-
-#     print(dilate.shape)
-#     return hsv
-#     # Verify that the final result here is the binarized output
-#     logger.debug("Resulting highlighting\n")
-#     return flipImage(blurImage(cv2.bitwise_and(dilate, mask), 0.2))# Change blur after text extraction to be 0.5
+    cv2.imshow("After Dilate", dilate)
+    return flipImage(original_mask)
 
 @log_execution_time
 def preprocessImage(input: MatLike) -> MatLike:
@@ -404,7 +368,9 @@ def preprocessImage(input: MatLike) -> MatLike:
     logger.debug("Starting preprocess process")
     try:
         # Apply filters to image
-        weighted = contrastImage(input)
+        text_range, bg_range = findColorRange(input)
+
+        weighted = contrastImage(input, bg_range)
 
         scaled = rescaleImage(weighted)
 
@@ -429,7 +395,8 @@ def preprocessImage(input: MatLike) -> MatLike:
     # return scaled
     # return skewed
     # return blurred
-    return note
+    # return note
+    # return bg_adjusted
     return result
 
 

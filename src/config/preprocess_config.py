@@ -23,12 +23,12 @@ class PreprocessConfig:
     VALID_RATIO = 0.5
 
     # Color Range
-    MIN_RANGE = -15
+    MIN_RANGE = -10
     MAX_RANGE = 10
 
     # Dynamic Image Adjustments
-    BRIGHTNESS_DELTA = 10
-    CONTRAST_DELTA = 0.5
+    BRIGHTNESS_DELTA = -150
+    CONTRAST_DELTA = 2.9
 
     # Text Detection
     SHADES = 8
@@ -46,7 +46,7 @@ class PreprocessConfig:
     KERNEL_RATIO = (1, 3)
     HIGH_DILATE_ITER = 1
     MAX_AR = 10
-    MIN_AREA = 4
+    MIN_AREA = 9
     MIN_HEIGHT = 10
     
 
