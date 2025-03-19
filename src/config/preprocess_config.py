@@ -46,8 +46,9 @@ class PreprocessConfig:
     KERNEL_RATIO = (1, 3)
     HIGH_DILATE_ITER = 1
     MAX_AR = 10
-    MIN_AREA = 9
-    MIN_HEIGHT = 10
+    MAX_AREA = 2000.0
+    MIN_AREA = 20.0
+    MAX_HEIGHT = 50
     
 
 preprocess_config = PreprocessConfig()

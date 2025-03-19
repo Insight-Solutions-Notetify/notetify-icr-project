@@ -336,7 +336,6 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     # ** Step 3: Dilation and Contour Detection **
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
     dilate = cv2.dilate(inpainted, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
-    cv2.imshow("Before Dilate", dilate)
 
     cnts, _ = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     logger.debug(f"Number of contours: {len(cnts)}")
@@ -347,20 +346,25 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
         ar = w / float(h)
         area = cv2.contourArea(c)
         
-        # Ignore contours that are likely horizontal lines
-        if h < preprocess_config.MIN_HEIGHT or ar > preprocess_config.MAX_AR:
-            logger.info(f"Ignoring line-like contour at ({x}, {y}) with AR: {ar}, H: {h}")
+        ''' Contours are valid if they follow these conditions
+        - There area is greater than MIN_AREA (area > MIN_AREA)
+
+        - There height is less than MAX_CNT_HEIGHT (h < MAX_CNT_HEIGHT)
+        - There aspect ratio is lower than MAX_AR (ar < AR)'''
+
+        if h > preprocess_config.MAX_HEIGHT or ar > preprocess_config.MAX_AR:
+            # logger.warning(f"Remvoing contour at ({x}, {y}) with height: {h} and ar: {ar}")
+            cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
             continue
 
-        if area < preprocess_config.MIN_AREA:
-            cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)  # Purplish Blue (Valid Text)
+        if area < preprocess_config.MAX_AREA and area > preprocess_config.MIN_AREA:
+            logger.debug(f"Keeping contour at ({x}, {y}) area: {ar}")
         else:
-            logger.warning(f"Keeping small contour with AR: {ar}, AREA: {area}")
-            cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)  # Yellow (Possible Small Text)
+            # logger.warning(f"Removing contour over limits at ({x}, {y}) area: {ar}")
+            cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1) # Possibly smaller contours (smudges)
 
     logger.debug("Resulting highlighting complete")
-    cv2.imshow("After Dilate", dilate)
-    return flipImage(original_mask)
+    return flipImage(blurImage(cv2.bitwise_and(dilate, original_mask), 0.2))
 
 @log_execution_time
 def preprocessImage(input: MatLike) -> MatLike:
