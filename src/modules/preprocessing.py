@@ -434,7 +434,7 @@ if __name__ == "__main__":
     # NCR generic sample retrieval
     image_path = os.path.join(base_dir, "src", "NCR_samples")
     #"src/NCR_samples/"
-    IMAGE_REGEX = IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+    IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
     #r".*\.jpg$"  # adding $ and "" makes it say if it ends in jpg it will scan it
     #this will only catch jpg lower caps
     # ask him y he used regex, ask him to talk to u to explain everything he did
@@ -457,7 +457,9 @@ if __name__ == "__main__":
 
         elif sys.platform in ["linux", "darwin"]:
             logger.info("Running on Linux/Mac")
-            files = subprocess.check_output(["ls", image_path]).decode("utf-8").split("\n")  # Convert output to list
+            image_path = "./src/NCR_samples"
+            IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+            files = subprocess.check_output(["ls", image_path]).decode("utf-8")  # Convert output to list
             file_names = re.findall(IMAGE_REGEX, files)#try this code out on linux, idk if this works
             joined_files = "\n".join(file_names)
             logger.debug(f"File imported:\n{joined_files}\n")

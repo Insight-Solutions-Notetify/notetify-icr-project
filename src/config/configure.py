@@ -4,7 +4,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Get the user's home directory dynamically
+# Get the user's home directory dynamically #This is bad design since we assume that the project is only in OneDrive/Documents/...
+# I dont mind since I can just modify this, but not a good way of doing this
 home_dir = os.path.expanduser("~")
 
 if sys.platform.startswith("win"):  # Covers Windows
