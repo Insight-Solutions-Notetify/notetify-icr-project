@@ -9,6 +9,7 @@ import colorlog
 from dotenv import load_dotenv
 from src.config.logger_config import logger_config
 
+
 load_dotenv()
 
 def get_env_variable(var_name: str, default: Union[str, int, float, bool] = None) -> Union[str, int, float, bool]:
