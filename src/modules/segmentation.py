@@ -203,6 +203,8 @@ def segment_characters(word_image: MatLike, min_char_size=segmentation_config.MI
 
         for i in range(1, len(inv_gaps)):
             if inv_gaps[i] - inv_gaps[i - 1] > segmentation_config.MIN_PIXEL_DIFF:
+                if inv_gaps[i - 1] - start < segmentation_config.MIN_CHAR_WIDTH:
+                    continue
                 character_index.append((start, inv_gaps[i - 1]))
                 start = inv_gaps[i]
         
@@ -210,7 +212,10 @@ def segment_characters(word_image: MatLike, min_char_size=segmentation_config.MI
         character_index.append((start, inv_gaps[-1]))
 
         # Extract characters from the word image
-        characters = [word_image[:, x1:x2] for x1, x2 in character_index]
+        try:
+            characters = [word_image[:, x1:x2] for x1, x2 in character_index]
+        except Exception as e:
+            logger.error(f"Error in obtaining images: {e}")
 
         # Display the word image with vertical gaps
         cv2.imshow("word_image", word_image)
