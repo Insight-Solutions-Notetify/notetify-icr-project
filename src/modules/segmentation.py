@@ -125,36 +125,36 @@ def segment_words(line_image, min_gap=segmentation_config.MIN_WORD_GAP):
         # Apply dilation to merge closely spaced characters within a word
         kernel = np.ones((1, 5), np.uint8)  # Adjust kernel size for better word separation
         dilated = cv2.dilate(line_image, kernel, iterations=1)
-        
+
         # Compute vertical projection
         projection = np.sum(dilated, axis=0)
-        
+
         # Adaptive threshold based on median projection value
-        threshold = np.median(projection) * 0.5
-        
+        threshold = max(np.median(projection) * 0.8, 10)  # Ensure a reasonable threshold value
+
         if threshold == 0:
             logger.warning("Word projection threshold is zero. Check your image or threshold logic.")
             return []
-        
+
         word_indices = np.where(projection > threshold)[0]
         words = []
-        
+
         if len(word_indices) == 0:
             logger.warning("No words detected in the line.")
             return words
-        
+
         # Use contours for more precise segmentation
         contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
+
         for contour in sorted(contours, key=lambda c: cv2.boundingRect(c)[0]):
             x, y, w, h = cv2.boundingRect(contour)
-            if w >= min_gap:  # Avoid detecting small noise
+            if w >= min_gap // 2:  # Allow for small words like "I" or "a"
                 word = line_image[:, x:x + w]
                 words.append(word)
-        
+
         return words
     except Exception as e:
-        logger.error(f"Error in word segmentation: {e}")
+        logger.exception(f"Error in word segmentation: {e}")
         return []
 
 def segment_characters(word_image, min_char_size=segmentation_config.MIN_CHAR_SIZE):
