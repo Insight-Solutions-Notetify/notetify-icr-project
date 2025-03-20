@@ -154,6 +154,14 @@ def segment_characters(word_image: MatLike, min_char_size=segmentation_config.MI
     """
     Segment a word image into individual characters using contour detection.
     """
+    ## TODO
+    # 1. Remove old method
+    # 2. Minimum character width based on average character width
+    # 3. Add bias to vertical threshold (not perfect gap)
+    # 4. Identified gaps are not always character boundaries (real-world data)
+    # 5. If width between gaps is too small, merge characters
+    # 6. Return a list of character images as a list
+    # 7. For testing: display the word image with vertical gaps
     try:
         # REMOVE LINE BELOW when using preprocessing module
         # Convert to binary image
@@ -181,15 +189,36 @@ def segment_characters(word_image: MatLike, min_char_size=segmentation_config.MI
         gaps = np.where(vertical > cur_threshold)[0]
         if len(gaps) == 0:
             logger.warning("No character gaps detected.")
+            return []
 
         # Draw the gaps on the image
         for gap in gaps:
             cv2.line(word_image, (gap, 0), (gap, word_image.shape[0]), 0, 1)
 
+        # Get the inverse of gaps (non-gap regions)
+        inv_gaps = np.where(vertical <= cur_threshold)[0]
+
+        character_index = []
+        start = inv_gaps[0]
+
+        for i in range(1, len(inv_gaps)):
+            if inv_gaps[i] - inv_gaps[i - 1] > segmentation_config.MIN_PIXEL_DIFF:
+                character_index.append((start, inv_gaps[i - 1]))
+                start = inv_gaps[i]
+        
+        # Append the last character
+        character_index.append((start, inv_gaps[-1]))
+
+        # Extract characters from the word image
+        characters = [word_image[:, x1:x2] for x1, x2 in character_index]
+
+        # Display the word image with vertical gaps
         cv2.imshow("word_image", word_image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-        return word_image
+        # return word_image
+    
+        return characters
     
 
         # OLD METHOD
@@ -267,7 +296,10 @@ def test_character_segmentation(word: str, output_dir: str) -> None:
         return
     characters = segment_characters(image)
     logger.debug(f"Detected {len(characters)} characters.")
-    save_images([characters], os.path.join(output_dir, f"words_{word}"), "word" )
+    if len(characters) == 1:
+        save_images([image], os.path.join(output_dir, f"words_{word}"), "word")
+    else:
+        save_images(characters, os.path.join(output_dir, f"words_{word}"), "word" )
     logger.debug("Character segmentation test complete.")
 
 if __name__ == "__main__":
