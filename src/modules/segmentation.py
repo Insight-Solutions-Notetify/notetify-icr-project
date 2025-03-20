@@ -118,32 +118,40 @@ def segment_lines(binary_image, min_gap=segmentation_config.MIN_LINE_GAP):
 
 def segment_words(line_image, min_gap=segmentation_config.MIN_WORD_GAP):
     """
-    Segment a line image into individual words based on vertical projection.
+    Segment a line image into individual words using vertical projection, morphological operations,
+    and contour detection.
     """
     try:
-        projection = np.sum(line_image, axis=0)
+        # Apply dilation to merge closely spaced characters within a word
+        kernel = np.ones((1, 5), np.uint8)  # Adjust kernel size for better word separation
+        dilated = cv2.dilate(line_image, kernel, iterations=1)
         
-        # Simple threshold = 10% of max projection
-        threshold = np.max(projection) * 0.1
+        # Compute vertical projection
+        projection = np.sum(dilated, axis=0)
         
-        # Avoid zero-threshold edge case
+        # Adaptive threshold based on median projection value
+        threshold = np.median(projection) * 0.5
+        
         if threshold == 0:
             logger.warning("Word projection threshold is zero. Check your image or threshold logic.")
             return []
         
         word_indices = np.where(projection > threshold)[0]
         words = []
+        
         if len(word_indices) == 0:
             logger.warning("No words detected in the line.")
             return words
-
-        # Group columns into word segments
-        start_idx = word_indices[0]
-        for i in range(1, len(word_indices)):
-            if word_indices[i] - word_indices[i - 1] > min_gap:
-                words.append(line_image[:, start_idx:word_indices[i]])
-                start_idx = word_indices[i]
-        words.append(line_image[:, start_idx:])
+        
+        # Use contours for more precise segmentation
+        contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        for contour in sorted(contours, key=lambda c: cv2.boundingRect(c)[0]):
+            x, y, w, h = cv2.boundingRect(contour)
+            if w >= min_gap:  # Avoid detecting small noise
+                word = line_image[:, x:x + w]
+                words.append(word)
+        
         return words
     except Exception as e:
         logger.error(f"Error in word segmentation: {e}")
