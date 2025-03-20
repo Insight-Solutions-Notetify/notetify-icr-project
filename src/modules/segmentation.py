@@ -150,7 +150,7 @@ def segment_words(line_image, min_gap=segmentation_config.MIN_WORD_GAP):
         logger.error(f"Error in word segmentation: {e}")
         return []
 
-def segment_characters(word_image: MatLike, min_char_size=segmentation_config.MIN_CHAR_SIZE):
+def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CHAR_SIZE):
     """
     Segment a word image into individual characters using contour detection.
     """
@@ -165,82 +165,28 @@ def segment_characters(word_image: MatLike, min_char_size=segmentation_config.MI
     try:
         # REMOVE LINE BELOW when using preprocessing module
         # Convert to binary image
-        word_image = cv2.threshold(word_image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        # Convert 255 to 1
-        binary = word_image // MAX_VALUE
-        # END OF REMOVE
+        binary = cv2.threshold(word_image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        # gray = cv2.cvtColor(word_image, cv2.COLOR_BGR2GRAY) if len(word_image.shape) == 3 else word_img
+
+        # Find contours of characters
+        cnts, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Sort contours from left to right based on x-coord
+        cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
+
+        characters_images = []
+
+        for c in cnts:
+            # Get bounding box
+            x, y, w, h = cv2.boundingRect(c)
+
+            if w > char_size[0]  and h > char_size[1]:
+                char_img = binary[x:y+h, x:x+w] # Crop character
+                # # Optional: resize the character
+                # char_resized = cv2.resize(char, (32, 32), interpolation=cv2.INTER_AREA)
+                characters_images.append(char_img)
         
-        # We assume word_image is already binarized
-        vertical = np.sum(binary, axis=0)
-        cur_threshold = vertical.max() - vertical.max() * segmentation_config.GAP_THRESHOLD 
-        logger.debug( f"Vertical threshold: {cur_threshold}")
-
-        ## Just for testing
-        # cv2.imshow("word_image", word_image)
-        # plt.plot(range(len(vertical)), vertical)
-        # plt.title("Vertical Projection")
-        # plt.show()
-
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-        ## End of testing
-
-        # Keep only the x-coordinates where ther are gaps
-        gaps = np.where(vertical > cur_threshold)[0]
-        if len(gaps) == 0:
-            logger.warning("No character gaps detected.")
-            return []
-
-        # Draw the gaps on the image
-        for gap in gaps:
-            cv2.line(word_image, (gap, 0), (gap, word_image.shape[0]), 0, 1)
-
-        # Get the inverse of gaps (non-gap regions)
-        inv_gaps = np.where(vertical <= cur_threshold)[0]
-
-        character_index = []
-        start = inv_gaps[0]
-
-        for i in range(1, len(inv_gaps)):
-            if inv_gaps[i] - inv_gaps[i - 1] > segmentation_config.MIN_PIXEL_DIFF:
-                if inv_gaps[i - 1] - start < segmentation_config.MIN_CHAR_WIDTH:
-                    continue
-                character_index.append((start, inv_gaps[i - 1]))
-                start = inv_gaps[i]
-        
-        # Append the last character
-        character_index.append((start, inv_gaps[-1]))
-
-        # Extract characters from the word image
-        try:
-            characters = [word_image[:, x1:x2] for x1, x2 in character_index]
-        except Exception as e:
-            logger.error(f"Error in obtaining images: {e}")
-
-        # Display the word image with vertical gaps
-        cv2.imshow("word_image", word_image)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        # return word_image
-    
-        return characters
-    
-
-        # OLD METHOD
-        characters = []
-
-        # Sort contours from left-to-right by x-coordinate
-        contours = cv2.findContours(word_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
-        for contour in sorted(contours, key=lambda c: cv2.boundingRect(c)[0]):
-            x, y, w, h = cv2.boundingRect(contour)
-            # Filter out small blobs
-            if w >= min_char_size[0] and h >= min_char_size[1]:
-                char = word_image[y:y + h, x:x + w]
-                # Optional: resize the character
-                char_resized = cv2.resize(char, (32, 32), interpolation=cv2.INTER_AREA)
-                characters.append(char_resized)
-        return characters
-        # END OF OLD METHOD
+        return characters_images
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
         return []
