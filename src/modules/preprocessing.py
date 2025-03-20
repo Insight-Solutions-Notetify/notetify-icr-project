@@ -1,7 +1,6 @@
 # Import the necessary libraries
 import cv2
 from cv2.typing import MatLike
-
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -19,6 +18,7 @@ os.chdir(project_root)
 
 from src.config.preprocess_config import preprocess_config
 from src.modules.logger import logger, log_execution_time
+from src.config.configure import base_dir
 
 ### PREPROCESS MODULE ###
 
@@ -112,10 +112,33 @@ def contrastImage(input: MatLike, bg_range=None, contrast=preprocess_config.CONT
     ''' Apply a contrast and brightness adjustment to the image '''
     if bg_range is not None:
         logger.debug(f"Adjusting image to background range: {bg_range}")
-        lower, upper = bg_range
-        m = interp1d([0, 255], [0, 1])
-        value = m(lower)
-        logger.warning(f"Interploating lower value: {lower} to range (-1 to 1) New Value: {value}")
+        #adjust image manually
+        lower, upper = bg_range #lower gets assigned, but upper never gets assigned, might be how we change the images
+        m = interp1d([0, 255], [0, 1])#change to max or min
+        value = m(lower)#change to lower_value
+        value_upper = m(upper)
+        brightness_offset = value * preprocess_config.BRIGHTNESS_DELTA
+        contrast_factor = 1 + (value * preprocess_config.CONTRAST_DELTA)
+        factor = 0.2
+        if value_upper > factor :
+            scale_factor = 1.0 - (value_upper - factor)  # e.g. 0.8 => scale_factor=1, 1.0 => scale_factor=0.8
+            scale_factor = max(scale_factor, 0.2)   # clamp so it doesn't go below 0.5
+            brightness_offset *= scale_factor
+            contrast_factor *= scale_factor
+
+            logger.debug(f"Interpolating lower value: {lower} => {value}  upper value: {upper} => {value_upper}")
+            logger.debug(f"Applying contrast factor: {contrast_factor}, brightness offset: {brightness_offset}")
+            adjusted_image = cv2.addWeighted(
+                input, 
+                contrast_factor, 
+                np.zeros(input.shape, input.dtype), 
+                0, 
+                brightness_offset
+                #adds a cap to the brightness for the contrast
+                
+        )
+
+        logger.warning(f"Interploating lower value: {lower} to range (-1 to 1) New Value: {value}")# ask him what this does
         logger.debug(f"Applying a contrast value: {1 + (value * preprocess_config.CONTRAST_DELTA)}, brightness value: {value * preprocess_config.BRIGHTNESS_DELTA}")
         adjusted_image = cv2.addWeighted(input, 1 + (value * preprocess_config.CONTRAST_DELTA), np.zeros(input.shape, input.dtype), 0, value * preprocess_config.BRIGHTNESS_DELTA)
     else:
@@ -409,18 +432,52 @@ if __name__ == "__main__":
 
     # Run through all the user-inputted files to ensure proper handling of images (basis)
     # NCR generic sample retrieval
-    image_path = "src/NCR_samples/"
-    IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+    image_path = os.path.join(base_dir, "src", "NCR_samples")
+    #"src/NCR_samples/"
+    IMAGE_REGEX = IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+    #r".*\.jpg$"  # adding $ and "" makes it say if it ends in jpg it will scan it
+    #this will only catch jpg lower caps
+    # ask him y he used regex, ask him to talk to u to explain everything he did
     logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
-    files = subprocess.check_output(["ls", image_path]).decode("utf-8")
-    file_names = re.findall(IMAGE_REGEX, files)
-    joined_files = "\n".join(file_names)
-    logger.debug(f"File imported:\n{joined_files}\n")
+    test_image_path = os.path.join(image_path, "45-angle-flash-sample-2.jpg")
+    img = cv2.imread(test_image_path)
+
+    if img is None:
+        print(f"OpenCV failed to open image: {test_image_path}")
+    else:
+        print(f"OpenCV successfully opened: {test_image_path}")
+    try:
+        if sys.platform.startswith("win"):
+            logger.info("Running on Windows")
+            files = os.listdir(image_path)  # Get list of files
+            file_names = [f for f in files if f.lower().endswith(".jpg")]
+            joined_files = "\n".join(file_names)
+            logger.debug(f"Files imported:\n{joined_files}")
+            logger.debug(len(file_names))
+
+        elif sys.platform in ["linux", "darwin"]:
+            logger.info("Running on Linux/Mac")
+            files = subprocess.check_output(["ls", image_path]).decode("utf-8").split("\n")  # Convert output to list
+            file_names = re.findall(IMAGE_REGEX, files)#try this code out on linux, idk if this works
+            joined_files = "\n".join(file_names)
+            logger.debug(f"File imported:\n{joined_files}\n")
+        else:
+            raise OSError(f"Unsupported platform: {sys.platform}")
+
+        # Apply regex to filter images
+        
+
+    except Exception as e:
+        logger.error(f"Error processing images: {e}")
 
     images = []
     for name in file_names:
-        if os.path.exists(image_path + name):
-            images.append(cv2.imread(f"{image_path}{name}"))
+        path_finder = os.path.join(image_path, name)
+        #print(os.path.join(image_path, name))
+        if os.path.exists(path_finder):
+
+            images.append(cv2.imread(path_finder))
+
         else:
             logger.warning(f"{name} not found in NCR_samples... skipping")
     
@@ -452,3 +509,5 @@ if __name__ == "__main__":
             # return None # Would return when integrated with the main driver
 
     logger.info("Complete preprocess module")
+    #tell him to get rid of regex
+    
