@@ -166,10 +166,11 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         # REMOVE LINE BELOW when using preprocessing module
         # Convert to binary image
         binary = cv2.threshold(word_image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        flipped = cv2.bitwise_not(binary)
         # gray = cv2.cvtColor(word_image, cv2.COLOR_BGR2GRAY) if len(word_image.shape) == 3 else word_img
 
         # Find contours of characters
-        cnts, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts, _ = cv2.findContours(flipped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         # Sort contours from left to right based on x-coord
         cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
@@ -179,12 +180,18 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         for c in cnts:
             # Get bounding box
             x, y, w, h = cv2.boundingRect(c)
-
-            if w > char_size[0]  and h > char_size[1]:
+            if w > char_size[0] and h > char_size[1]:
                 char_img = binary[x:y+h, x:x+w] # Crop character
+                if char_img.shape[0] == 0 or char_img.shape[1] == 0:
+                    continue
+                cv2.imshow("Character", char_img)
+                cv2.waitKey(0)
+
                 # # Optional: resize the character
                 # char_resized = cv2.resize(char, (32, 32), interpolation=cv2.INTER_AREA)
                 characters_images.append(char_img)
+                
+                
         
         return characters_images
     except Exception as e:
@@ -248,7 +255,7 @@ def test_character_segmentation(word: str, output_dir: str) -> None:
     characters = segment_characters(image)
     logger.debug(f"Detected {len(characters)} characters.")
     if len(characters) == 1:
-        save_images([image], os.path.join(output_dir, f"words_{word}"), "word")
+        save_images(characters, os.path.join(output_dir, f"words_{word}"), "word")
     else:
         save_images(characters, os.path.join(output_dir, f"words_{word}"), "word" )
     logger.debug("Character segmentation test complete.")
