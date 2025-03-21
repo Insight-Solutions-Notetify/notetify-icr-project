@@ -5,5 +5,6 @@ class SegmentationConfig:
     MIN_LINE_GAP = 5
 
     HEIGHT_INFLUENCE = 0.25
+    WIDTH_CHAR_BUFFER = 5
 
 segmentation_config = SegmentationConfig()
