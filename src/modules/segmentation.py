@@ -299,7 +299,7 @@ def test_character_segmentation(word: str, output_dir: str) -> None:
 if __name__ == "__main__":
     logger.info("Testing segmentation module")
 
-    user = input("Use REGEX(t or f)?:")
+    user = input("Use 'ls' or np.endswith(t or f)?:")
     if user == "f":
         # Use specific file instead
         output_dir = "segmented_output" # Add your directory here
