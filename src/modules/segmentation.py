@@ -174,8 +174,6 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         # Sort contours from left to right based on x-coord
         cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
 
-        characters_images = []
-
         word_image = cv2.cvtColor(word_image, cv2.COLOR_GRAY2BGR)
 
         logger.debug(f"Detected {len(cnts)} contours.")
@@ -197,11 +195,10 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         cnts = [c for c in cnts if len(c) > 0]
         logger.debug(f"Detected {len(cnts)} contours after merging.")
 
+        characters_images = []
         for c in cnts:
             x, y, w, h = cv2.boundingRect(c)
-            ar = w / float(h)
             area = w * h
-
 
             # Filter out small contours based on area and aspect ratio
             if area < word_image.shape[0] * segmentation_config.HEIGHT_INFLUENCE:
@@ -221,12 +218,20 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
             cv2.drawContours(word_image, [c], -1, (0, 255, 0), 1)
             cv2.imshow("Word", word_image)
             cv2.waitKey(0)
+
+            char_resized = cv2.resize(binary[0:binary.shape[0],
+                                             max(0, x - segmentation_config.WIDTH_CHAR_BUFFER):
+                                             min(binary.shape[1],
+                                             x + w + segmentation_config.WIDTH_CHAR_BUFFER)], 
+                                      (32, 32), 
+                                      interpolation=cv2.INTER_AREA)
+            
+            characters_images.append(char_resized)
         
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
         return []
 
-    return [word_image]
     return characters_images
 
 def save_images(images, folder, prefix):
