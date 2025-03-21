@@ -155,16 +155,15 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
     Segment a word image into individual characters using contour detection.
     """
     ## TODO
-    # 1. Remove old method
-    # 2. Minimum character width based on average character width
-    # 3. Add bias to vertical threshold (not perfect gap)
-    # 4. Identified gaps are not always character boundaries (real-world data)
-    # 5. If width between gaps is too small, merge characters
+    # 1. Ensure the input image is binary
+    # 2. Find contours of characters (white characters on black background)
+    # 3. If contours overlap in the x-direction, merge them
+    # 4. Filter out small contours based on area and aspect ratio
+    # 5. Optional: resize the character to a fixed size (e.g., 32x32)
     # 6. Return a list of character images as a list
     # 7. For testing: display the word image with vertical gaps
     try:
-        # REMOVE LINE BELOW when using preprocessing module
-        # Convert to binary image
+        # Testing only (remove later) - display already binarized word image
         binary = cv2.threshold(word_image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         flipped = cv2.bitwise_not(binary)
         # gray = cv2.cvtColor(word_image, cv2.COLOR_BGR2GRAY) if len(word_image.shape) == 3 else word_img
@@ -177,26 +176,58 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
 
         characters_images = []
 
-        for c in cnts:
-            # Get bounding box
-            x, y, w, h = cv2.boundingRect(c)
-            if w > char_size[0] and h > char_size[1]:
-                char_img = binary[x:y+h, x:x+w] # Crop character
-                if char_img.shape[0] == 0 or char_img.shape[1] == 0:
-                    continue
-                cv2.imshow("Character", char_img)
-                cv2.waitKey(0)
+        word_image = cv2.cvtColor(word_image, cv2.COLOR_GRAY2BGR)
 
-                # # Optional: resize the character
-                # char_resized = cv2.resize(char, (32, 32), interpolation=cv2.INTER_AREA)
-                characters_images.append(char_img)
-                
-                
+        logger.debug(f"Detected {len(cnts)} contours.")
+        # Merge overlapping contours in the x-direction
+        logger.debug("Merging overlapping contours")
+        for i in range(len(cnts) - 1):
+            for j in range(i + 1, len(cnts)):
+                if len(cnts[i]) == 0:
+                    continue
+                x1, y1, w1, h1 = cv2.boundingRect(cnts[i])
+                x2, y2, w2, h2 = cv2.boundingRect(cnts[j])
+                if x2 - (x1 + w1) < 3:
+                    if y2 - (y1 + h1) < 3:
+                        if w1 + w2 > char_size[0]:
+                            cnts[i] = np.concatenate((cnts[i], cnts[j]))
+                            cnts[j] = np.array([])
         
-        return characters_images
+        # Remove empty contours
+        cnts = [c for c in cnts if len(c) > 0]
+        logger.debug(f"Detected {len(cnts)} contours after merging.")
+
+        for c in cnts:
+            x, y, w, h = cv2.boundingRect(c)
+            ar = w / float(h)
+            area = w * h
+
+
+            # Filter out small contours based on area and aspect ratio
+            if area < word_image.shape[0] * segmentation_config.HEIGHT_INFLUENCE:
+                continue
+
+            # if w > char_size[0] and h > char_size[1]:
+            #     char_img = binary[x:y+h, x:x+w] # Crop character
+            #     if char_img.shape[0] == 0 or char_img.shape[1] == 0:
+            #         continue
+            #     cv2.imshow("Character", char_img)
+            #     cv2.waitKey(0)
+
+            #     # Optional: resize the character
+            #     # char_resized = cv2.resize(char, (32, 32), interpolation=cv2.INTER_AREA)
+            #     characters_images.append(char_img)
+            
+            cv2.drawContours(word_image, [c], -1, (0, 255, 0), 1)
+            cv2.imshow("Word", word_image)
+            cv2.waitKey(0)
+        
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
         return []
+
+    return [word_image]
+    return characters_images
 
 def save_images(images, folder, prefix):
     """
