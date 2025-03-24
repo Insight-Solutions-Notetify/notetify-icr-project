@@ -299,15 +299,21 @@ def test_character_segmentation(word: str, output_dir: str) -> None:
 if __name__ == "__main__":
     logger.info("Testing segmentation module")
 
+    output_dir = "segmented_output"
+    file_names = []
     user = input("Use 'ls' or np.endswith(t or f)?:")
+
     if user == "f":
+        image_path = "src/NCR_samples/" # Add your directory here
         # Use specific file instead
-        output_dir = "segmented_output" # Add your directory here
-        os.path.join()
+        # os.path.join()
+        file_names = []
+        for subdir, _, files in os.walk(image_path):
+            for file in files:
+                if file.endswith(".jpg"):
+                    file_names.append(file)
     
     elif user == "t":
-        output_dir = "segmented_output"
-
         # Run through all the user-inputted files to ensure proper handling of images (basis)
         # NCR generic sample retrieval
         image_path = "src/NCR_samples/"
@@ -318,20 +324,20 @@ if __name__ == "__main__":
         joined = "\n".join(file_names)
         logger.debug(f"File imported:\n{joined}\n")
 
-        images = []
-        for name in file_names:
-            if os.path.exists(image_path + name):
-                images.append(cv2.imread(f"{image_path}{name}"))
-            else:
-                logger.warning(f"{name} not found in NCR_samples... skipping")
-        
-        for i in range(len(file_names)):
-            logger.debug("Begining segmentation")
-            # preprocessed = preprocessing.preprocessImage(images[i])
-            # segmented = segmentate_image(images[i], output_dir)
+    images = []
+    for name in file_names:
+        if os.path.exists(image_path + name):
+            images.append(cv2.imread(f"{image_path}{name}"))
+        else:
+            logger.warning(f"{name} not found in NCR_samples... skipping")
+    
+    for i in range(len(file_names)):
+        logger.debug("Begining segmentation")
+        # preprocessed = preprocessing.preprocessImage(images[i])
+        # segmented = segmentate_image(images[i], output_dir)
 
-            # FOR DEVELOPMENT TESTING
-            logger.debug(f"Segmenting image {file_names[i]}")
-            segmented = test_character_segmentation(file_names[i], output_dir)
+        # FOR DEVELOPMENT TESTING
+        logger.debug(f"Segmenting image {file_names[i]}")
+        segmented = test_character_segmentation(file_names[i], output_dir)
     
     logger.info("Complete segmentation module")
