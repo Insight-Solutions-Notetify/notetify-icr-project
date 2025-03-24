@@ -430,56 +430,30 @@ def preprocessImage(input: MatLike) -> MatLike:
 if __name__ == "__main__":
     logger.info("Testing preprocessing module")
 
-    # Run through all the user-inputted files to ensure proper handling of images (basis)
-    # NCR generic sample retrieval
-    image_path = os.path.join(base_dir, "src", "NCR_samples")
-    #"src/NCR_samples/"
-    IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
-    #r".*\.jpg$"  # adding $ and "" makes it say if it ends in jpg it will scan it
-    #this will only catch jpg lower caps
-    # ask him y he used regex, ask him to talk to u to explain everything he did
-    logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
-    test_image_path = os.path.join(image_path, "45-angle-flash-sample-2.jpg")
-    img = cv2.imread(test_image_path)
-
-    if img is None:
-        print(f"OpenCV failed to open image: {test_image_path}")
+    user = input("Use 'ls' (T or F)?: ")
+    if user.lower() == "f":
+        logger.info("Using os.listdir() to retrieve files")
+        image_path = os.path.join(base_dir, "src", "NCR_samples")
+        files = os.listdir(image_path)  # Get list of files
+        file_names = [f for f in files if f.lower().endswith(".jpg")]
+        joined_files = "\n".join(file_names)
+        logger.debug(f"Files imported:\n{joined_files}")
+        logger.debug(len(file_names))
     else:
-        print(f"OpenCV successfully opened: {test_image_path}")
-    try:
-        if sys.platform.startswith("win"):
-            logger.info("Running on Windows")
-            files = os.listdir(image_path)  # Get list of files
-            file_names = [f for f in files if f.lower().endswith(".jpg")]
-            joined_files = "\n".join(file_names)
-            logger.debug(f"Files imported:\n{joined_files}")
-            logger.debug(len(file_names))
-
-        elif sys.platform in ["linux", "darwin"]:
-            logger.info("Running on Linux/Mac")
-            image_path = "./src/NCR_samples"
-            IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
-            files = subprocess.check_output(["ls", image_path]).decode("utf-8")  # Convert output to list
-            file_names = re.findall(IMAGE_REGEX, files)#try this code out on linux, idk if this works
-            joined_files = "\n".join(file_names)
-            logger.debug(f"File imported:\n{joined_files}\n")
-        else:
-            raise OSError(f"Unsupported platform: {sys.platform}")
-
-        # Apply regex to filter images
-        
-
-    except Exception as e:
-        logger.error(f"Error processing images: {e}")
+        logger.info("Using 'ls' command to retrieve files")
+        IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+        image_path = "./src/NCR_samples"
+        files = subprocess.check_output(["ls", image_path]).decode("utf-8")  # Convert output to list
+        file_names = re.findall(IMAGE_REGEX, files)#try this code out on linux, idk if this works
+        joined_files = "\n".join(file_names)
+        logger.debug(f"File imported:\n{joined_files}\n")
 
     images = []
     for name in file_names:
         path_finder = os.path.join(image_path, name)
         #print(os.path.join(image_path, name))
         if os.path.exists(path_finder):
-
             images.append(cv2.imread(path_finder))
-
         else:
             logger.warning(f"{name} not found in NCR_samples... skipping")
     
@@ -511,5 +485,4 @@ if __name__ == "__main__":
             # return None # Would return when integrated with the main driver
 
     logger.info("Complete preprocess module")
-    #tell him to get rid of regex
     
