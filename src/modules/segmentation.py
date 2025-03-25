@@ -155,8 +155,8 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
     Segment a word image into individual characters using contour detection.
     """
     ## TODO
-    # 1. Ensure the input image is binary
-    # 2. Find contours of characters (white characters on black background)
+    # 1. Ensure the input image is binary - DONE
+    # 2. Find contours of characters (white characters on black background) - DONE
     # 3. If contours overlap in the x-direction, merge them
     # 4. Filter out small contours based on area and aspect ratio
     # 5. Optional: resize the character to a fixed size (e.g., 32x32)
