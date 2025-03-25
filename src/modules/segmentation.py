@@ -223,7 +223,7 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
                                              max(0, x - segmentation_config.WIDTH_CHAR_BUFFER):
                                              min(binary.shape[1],
                                              x + w + segmentation_config.WIDTH_CHAR_BUFFER)], 
-                                      (32, 32), 
+                                      (28, 28), 
                                       interpolation=cv2.INTER_AREA)
             
             characters_images.append(char_resized)
