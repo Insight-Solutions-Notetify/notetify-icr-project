@@ -185,8 +185,8 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
                     continue
                 x1, y1, w1, h1 = cv2.boundingRect(cnts[i])
                 x2, y2, w2, h2 = cv2.boundingRect(cnts[j])
-                if x2 - (x1 + w1) < 3:
-                    if y2 - (y1 + h1) < 3:
+                if x2 - (x1 + w1) < segmentation_config.MERGING_MIN_X:
+                    if y2 - (y1 + h1) < segmentation_config.MERGING_MIN_Y:
                         if w1 + w2 > char_size[0]:
                             cnts[i] = np.concatenate((cnts[i], cnts[j]))
                             cnts[j] = np.array([])
@@ -195,6 +195,7 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         cnts = [c for c in cnts if len(c) > 0]
         logger.debug(f"Detected {len(cnts)} contours after merging.")
 
+        # Check contour widths and split wide contours if they are more than two character width
         characters_images = []
         for c in cnts:
             x, y, w, h = cv2.boundingRect(c)
@@ -203,18 +204,8 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
             # Filter out small contours based on area and aspect ratio
             if area < word_image.shape[0] * segmentation_config.HEIGHT_INFLUENCE:
                 continue
-
-            # if w > char_size[0] and h > char_size[1]:
-            #     char_img = binary[x:y+h, x:x+w] # Crop character
-            #     if char_img.shape[0] == 0 or char_img.shape[1] == 0:
-            #         continue
-            #     cv2.imshow("Character", char_img)
-            #     cv2.waitKey(0)
-
-            #     # Optional: resize the character
-            #     # char_resized = cv2.resize(char, (32, 32), interpolation=cv2.INTER_AREA)
-            #     characters_images.append(char_img)
             
+            # TESTING REMOVE LATER
             cv2.drawContours(word_image, [c], -1, (0, 255, 0), 1)
             cv2.imshow("Word", word_image)
             cv2.waitKey(0)
@@ -223,7 +214,7 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
                                              max(0, x - segmentation_config.WIDTH_CHAR_BUFFER):
                                              min(binary.shape[1],
                                              x + w + segmentation_config.WIDTH_CHAR_BUFFER)], 
-                                      (28, 28), 
+                                      segmentation_config.IMAGE_DIMS, 
                                       interpolation=cv2.INTER_AREA)
             
             characters_images.append(char_resized)
