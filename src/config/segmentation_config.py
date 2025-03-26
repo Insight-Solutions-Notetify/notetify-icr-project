@@ -6,9 +6,9 @@ class SegmentationConfig:
 
     # Character Segmentation
     MERGING_MIN_X = 3
-    MERGING_MIN_Y = 20
+    MERGING_MIN_Y = 10
 
-    MINIMUM_SPLIT_WIDTH = 10 # Ignore splitting if average width goes below this value
+    MINIMUM_SPLIT_WIDTH = 1.6 # Ignore splitting if average width goes below this value
     HEIGHT_INFLUENCE = 0.25
     WIDTH_CHAR_BUFFER = 5
 

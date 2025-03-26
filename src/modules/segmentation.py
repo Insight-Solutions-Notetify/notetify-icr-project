@@ -157,9 +157,9 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
     ## TODO
     # 1. Ensure the input image is binary - DONE
     # 2. Find contours of characters (white characters on black background) - DONE
-    # 3. If contours overlap in the x-direction, merge them
-    # 4. Filter out small contours based on area and aspect ratio
-    # 5. Optional: resize the character to a fixed size (e.g., 32x32)
+    # 3. If contours overlap in the x-direction, merge them - DONE
+    # 4. Filter out small contours based on area and aspect ratio - DONE
+    # 5. Optional: resize the character to a fixed size (e.g., 26x26) - DONE
     # 6. Return a list of character images as a list
     # 7. For testing: display the word image with vertical gaps
     try:
@@ -195,19 +195,25 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         cnts = [c for c in cnts if len(c) > 0]
         logger.debug(f"Detected {len(cnts)} contours after merging.")
 
-        # Check contour widths and split wide contours if they are more than two character width
-        avg_width = np.average([cv2.boundingRect(cnt)[2] for cnt in cnts])
-        logger.debug(f"Average width {avg_width}")
-        for id, c in enumerate(cnts): 
-            # If contour width is bigger than double contour 
-            x, y, w, h = cv2.boundingRect(c)
-            logger.debug(f"Width of contour: {id} Width: {w}")
+        # # Check contour widths and split wide contours if they are more than two character width
+        # avg_width = np.average([cv2.boundingRect(cnt)[2] for cnt in cnts])
+        # logger.debug(f"Average width {avg_width}")
+        # for id, c in enumerate(cnts): 
+        #     # If contour width is bigger than double contour 
+        #     x, y, w, h = cv2.boundingRect(c)
+        #     print(word_image.shape[1] * segmentation_config.MIN_CHAR_WIDTH)
+        #     if w >= avg_width * segmentation_config.MINIMUM_SPLIT_WIDTH:
+        #         logger.warning(f"Splitting contour: {id} with Width: {w}")
+        #         logger.warning(f"Splitting into: {np.floor(w / avg_width)} contours")
+                # print(c)
+            # logger.debug(f"Width of contour: {id} Width: {w}")
 
         cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
         characters_images = []
         for c in cnts:
             x, y, w, h = cv2.boundingRect(c)
             area = w * h
+            
 
             # Filter out small contours based on area and aspect ratio
             if area < word_image.shape[0] * segmentation_config.HEIGHT_INFLUENCE:
