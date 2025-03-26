@@ -196,6 +196,14 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         logger.debug(f"Detected {len(cnts)} contours after merging.")
 
         # Check contour widths and split wide contours if they are more than two character width
+        avg_width = np.average([cv2.boundingRect(cnt)[2] for cnt in cnts])
+        logger.debug(f"Average width {avg_width}")
+        for id, c in enumerate(cnts): 
+            # If contour width is bigger than double contour 
+            x, y, w, h = cv2.boundingRect(c)
+            logger.debug(f"Width of contour: {id} Width: {w}")
+
+        cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
         characters_images = []
         for c in cnts:
             x, y, w, h = cv2.boundingRect(c)
