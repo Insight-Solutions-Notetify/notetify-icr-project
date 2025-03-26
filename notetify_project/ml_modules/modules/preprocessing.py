@@ -428,7 +428,7 @@ def preprocessImage(input: MatLike) -> MatLike:
 
 if __name__ == "__main__":
     logger.info("Testing preprocessing module")
-
+    base_dir ="Not USED"
     user = input("Use 'ls' (T or F)?: ")
     if user.lower() == "f":
         logger.info("Using os.listdir() to retrieve files")
