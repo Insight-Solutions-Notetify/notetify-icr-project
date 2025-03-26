@@ -1,12 +1,14 @@
 
 class SegmentationConfig:
-    MIN_CHAR_SIZE = (10, 5)
+    MIN_CHAR_SIZE = (10, 5) # Pixels may be larger or smaller than expected
     MIN_WORD_GAP = 5
     MIN_LINE_GAP = 5
 
     # Character Segmentation
     MERGING_MIN_X = 3
-    MERGING_MIN_Y = 3
+    MERGING_MIN_Y = 20
+
+    MINIMUM_SPLIT_WIDTH = 10 # Ignore splitting if average width goes below this value
     HEIGHT_INFLUENCE = 0.25
     WIDTH_CHAR_BUFFER = 5
 
