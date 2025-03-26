@@ -195,34 +195,20 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         cnts = [c for c in cnts if len(c) > 0]
         logger.debug(f"Detected {len(cnts)} contours after merging.")
 
-        # # Check contour widths and split wide contours if they are more than two character width
-        # avg_width = np.average([cv2.boundingRect(cnt)[2] for cnt in cnts])
-        # logger.debug(f"Average width {avg_width}")
-        # for id, c in enumerate(cnts): 
-        #     # If contour width is bigger than double contour 
-        #     x, y, w, h = cv2.boundingRect(c)
-        #     print(word_image.shape[1] * segmentation_config.MIN_CHAR_WIDTH)
-        #     if w >= avg_width * segmentation_config.MINIMUM_SPLIT_WIDTH:
-        #         logger.warning(f"Splitting contour: {id} with Width: {w}")
-        #         logger.warning(f"Splitting into: {np.floor(w / avg_width)} contours")
-                # print(c)
-            # logger.debug(f"Width of contour: {id} Width: {w}")
-
         cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
         characters_images = []
         for c in cnts:
             x, y, w, h = cv2.boundingRect(c)
             area = w * h
-            
 
             # Filter out small contours based on area and aspect ratio
             if area < word_image.shape[0] * segmentation_config.HEIGHT_INFLUENCE:
                 continue
             
-            # TESTING REMOVE LATER
-            cv2.drawContours(word_image, [c], -1, (0, 255, 0), 1)
-            cv2.imshow("Word", word_image)
-            cv2.waitKey(0)
+            # # TESTING REMOVE LATER
+            # cv2.drawContours(word_image, [c], -1, (0, 255, 0), 1)
+            # cv2.imshow("Word", word_image)
+            # cv2.waitKey(0)
 
             char_resized = cv2.resize(binary[0:binary.shape[0],
                                              max(0, x - segmentation_config.WIDTH_CHAR_BUFFER):
