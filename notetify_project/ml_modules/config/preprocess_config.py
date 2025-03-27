@@ -8,7 +8,7 @@ class PreprocessConfig:
 
     # Skewing Adjustments
     ANGLE_DELTA = 1
-    ANGLE_LIMIT = 70
+    ANGLE_LIMIT = 45 
 
     # Image Rescaling Parameters
     IMG_WIDTH = 800
@@ -48,7 +48,7 @@ class PreprocessConfig:
     MAX_AR = 10
     MAX_AREA = 2000.0
     MIN_AREA = 20.0
-    MAX_HEIGHT = 50
+    MAX_HEIGHT = 100
     
 
 preprocess_config = PreprocessConfig()
