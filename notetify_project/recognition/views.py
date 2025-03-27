@@ -1,14 +1,17 @@
-import tensorflow as tf
 import cv2
+import tensorflow as tf
 import numpy as np
 from keras import models
+
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.shortcuts import render
+from django.conf import settings
+
 from rest_framework.response import Response
 from rest_framework import status, views
 from .models import HandwritingImage
 from .serializers import HandwritingImageSerializer
-from django.shortcuts import render
 
 # Import preprocessing and segmentation
 from ml_modules.modules.preprocessing import preprocessImage
@@ -34,10 +37,13 @@ def upload_image(request):
         if not success:
             raise Exception("Failed to encode image")
         image_file = ContentFile(img_buffer.tobytes(), name='processed_image.jpg')
+        processed_name = f"procsesed-{image_path}"
+        default_storage.save(processed_name, image_file)
 
-        processed_image = default_storage.save("processed-" + image.name, image_file)
+        image_url = f"{settings.MEDIA_URL}{image.name}"
+        processed_url = f"{settings.MEDIA_URL}{processed_name}"
         predicted_text = "Predicted text..."
-        return render(request, 'upload.html', {'image_url': default_storage.url(image_path), 'recognized_text':predicted_text, 'processed_url':default_storage.url(processed_image)})
+        return render(request, 'upload.html', {'image_url':image_url, 'recognized_text':predicted_text, 'processed_url':processed_url})
     
     return render(request, 'upload.html')
 
