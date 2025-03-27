@@ -36,7 +36,7 @@ class HandwritingRecognitionView(views.APIView):
                 raise Exception("Failed to encode image")
             image_file = ContentFile(img_buffer.tobytes(), name='processed_image.jpg')
 
-            default_storage.save("Processed" + image.name, image_file)
+            default_storage.save("processed-" + image.name, image_file)
             predicted_text = "Predicted text..."
             return Response({"text": predicted_text, "path": image_path}, status=status.HTTP_200_OK) 
         
