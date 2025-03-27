@@ -1,5 +1,6 @@
 import tensorflow as tf
 import cv2
+import numpy as np
 from keras import models
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
@@ -66,13 +67,22 @@ def upload_image(request):
             raise Exception("Failed to encode image")
         image_file = ContentFile(img_buffer.tobytes(), name='processed_image.jpg')
 
-        processed_image = default_storage.save("Processed" + image.name, image_file)
+        processed_image = default_storage.save("processed-" + image.name, image_file)
         predicted_text = "Predicted text..."
         return render(request, 'upload.html', {'image_url': default_storage.url(image_path), 'recognized_text':predicted_text, 'processed_url':default_storage.url(processed_image)})
     
     return render(request, 'upload.html')
 
-def decode_prediction(prediction):
-    # Covner model output into readable text (a-zA-Z & 0-9) Certain confidence threshold to be accepted else 'white_space' filler
-
-    return "Recognized Text Here"
+def decode_prediction(predictions):
+    # Convert model output into readable text (a-zA-Z & 0-9) Certain confidence threshold to be accepted else 'white_space' filler
+    character_by_index = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 
+                      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+                      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
+    
+    printed_guess = [character_by_index[np.argmax(ix)] for ix in predictions]
+    confidence = [np.max(ix) for ix in predictions]
+    for ix in range(len(printed_guess)):
+        if confidence <= 0.70:
+            printed_guess[ix] = ' '
+    
+    return printed_guess
