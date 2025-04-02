@@ -20,10 +20,15 @@
         <div class="mt-5 text-center">
             <h4>Uploaded Image</h4>
             <img src="{{ image_url }}" class="img-fluid border rounded" style="max-width: 400px;">
+<<<<<<< Updated upstream
             <a href="{{ image_url }}" style="max-width: 400px;">Download Original Image</a>
+=======
+            <a href="{{ imag_url }}" download style="max-width: 400px;">Download Original Image</a>
+>>>>>>> Stashed changes
             <h4 class="mt-3">Recognized Text</h4>
             <p class="border p-3 bg-white">{{ recognized_text }}</p>
             <h4>Uploaded Image</h4>
+            <a href="{{ processed_url }}" download style ="max-width: 400px">Download Processed Image</a>
             <img src="{{ processed_url }}" class="img-fluid border rounded" style ="max-width: 400px">
             <a href="{{ processed_url }}" style="max-width: 400px">Download Processed Image</a>
         </div>
