@@ -16,6 +16,7 @@ os.chdir(project_root)
 
 from src.config.segmentation_config import segmentation_config
 from src.modules.logger import logger
+import matplotlib.pyplot as plt
 
 # TODO - Remove preprocess image function and config parameters (moved to segmentation_config)
 
@@ -44,8 +45,8 @@ def preprocess_image(image_path):
             MAX_VALUE,  # was THRESH_BINARY_INV (confusing)
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
             cv2.THRESH_BINARY_INV,
-            15,
-            10
+            11,
+            8
         )
         # Apply a small Gaussian blur to reduce noise
         binary = cv2.GaussianBlur(binary, BLUR_KERNEL_SIZE, 0)
@@ -81,16 +82,29 @@ def deskew(image):
 
 
 ## END TODO
+def plot_projection(binary_image):
+    projection = np.sum(binary_image, axis=1)
+    plt.plot(projection)
+    plt.title("Horizontal Projection Profile")
+    plt.xlabel("Row Index")
+    plt.ylabel("Sum of Pixel Values")
+    plt.show()
+
+# Call this function on your binary image
+
 
 def segment_lines(binary_image, min_gap=segmentation_config.MIN_LINE_GAP):
     """
     Segment the binary image into individual lines based on horizontal projection.
     """
     try:
+        plot_projection(binary_image)
+        kernel = np.ones((2,2), np.uint8)  # Small kernel to remove noise
+        binary_image = cv2.erode(binary_image, kernel, iterations=1)
         projection = np.sum(binary_image, axis=1)
         
         # Simple threshold = 20% of max projection
-        threshold = np.max(projection) * 0.2
+        threshold = np.max(projection) * 0.1
         
         # Avoid zero-threshold edge case
         if threshold == 0:
@@ -187,15 +201,16 @@ def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
     Complete processing pipeline for an image: preprocess, deskew, segment lines, words, and characters.
     """
     # # 1. Preprocess
-    # binary = preprocess_image(image_path)
-    # if binary is None:
-    #     logger.error("Image preprocessing failed.")
-    #     return
+    binary = preprocess_image(image_path)
+    if binary is None:
+        logger.error("Image preprocessing failed.")
+        return
 
     # # 2. Deskew
-    # binary = deskew(binary)
+    binary = deskew(binary)
 
     # 3. Line segmentation
+    
     lines = segment_lines(image)
     logger.debug(f"Detected {len(lines)} lines.")
     save_images(lines, os.path.join(output_dir, "lines"), "line")
@@ -224,23 +239,22 @@ if __name__ == "__main__":
 
     # Run through all the user-inputted files to ensure proper handling of images (basis)
     # NCR generic sample retrieval
-    image_path = "src/NCR_samples/"
+    image_path = "src/seg_images/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
     logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
-    files = subprocess.check_output(["ls", image_path]).decode("utf-8")
-    file_names = re.findall(IMAGE_REGEX, files)
-    logger.debug(f"File imported:\n{"\t".join(file_names)}\n")
+    files = os.listdir(image_path)
+    logger.debug(f"File imported:\n{"\t".join(files)}\n")
 
     images = []
-    for name in file_names:
+    for name in files:
         if os.path.exists(image_path + name):
             images.append(cv2.imread(f"{image_path}{name}"))
         else:
-            logger.warning(f"{name} not found in NCR_samples... skipping")
+            logger.warning(f"{name} not found in images... skipping")
     
-    for i in range(len(file_names)):
+    for i in range(len(files)):
         preprocessed = preprocessing.preprocessImage(images[i])
-        logger.debug(f"Segmenting image {file_names[i]}")
+        logger.debug(f"Segmenting image {files[i]}")
         segmented = segmentate_image(preprocessed, output_dir)
     
     logger.info("Complete segmentation module")

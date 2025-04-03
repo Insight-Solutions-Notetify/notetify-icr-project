@@ -241,21 +241,21 @@ if __name__ == "__main__":
     # NCR generic sample retrieval
     image_path = "src/NCR_samples/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
-    files = subprocess.check_output(["ls", image_path]).decode("utf-8")
-    file_names = re.findall(IMAGE_REGEX, files)
+    files = os.listdir(image_path)
+    logger.debug(f"File imported:\n{"\t".join(files)}\n")
     # print(file_names)
 
     images = []
-    for name in file_names:
+    for name in files:
         if os.path.exists(image_path + name):
             images.append(cv2.imread(f"{image_path}{name}"))
         else:
             print(f"{name} not found in NCR_samples... skipping")
     
-    for i in range(len(file_names)):
+    for i in range(len(files)):
         result = preprocessImage(images[i])
-        cv2.imshow(file_names[i], result)
-        cv2.moveWindow(file_names[i], 0, 0)
+        cv2.imshow(files[i], result)
+        cv2.moveWindow(files[i], 0, 0)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
