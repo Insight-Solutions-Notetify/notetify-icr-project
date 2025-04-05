@@ -82,55 +82,43 @@ def deskew(image):
 
 
 ## END TODO
-def plot_projection(binary_image):
-    projection = np.sum(binary_image, axis=1)
-    plt.plot(projection)
-    plt.title("Horizontal Projection Profile")
-    plt.xlabel("Row Index")
-    plt.ylabel("Sum of Pixel Values")
-    plt.show()
+# def plot_projection(binary_image):
+#     projection = np.sum(binary_image, axis=1)
+#     plt.plot(projection)
+#     plt.title("Horizontal Projection Profile")
+#     plt.xlabel("Row Index")
+#     plt.ylabel("Sum of Pixel Values")
+#     plt.show()
 
 # Call this function on your binary image
 
 
-def segment_lines(binary_image, min_gap=segmentation_config.MIN_LINE_GAP):
-    """
-    Segment the binary image into individual lines based on horizontal projection.
-    """
-    try:
-        plot_projection(binary_image)
-        
-        kernel = np.ones((2,2), np.uint8)  # Small kernel to remove noise
-        binary_image = cv2.erode(binary_image, kernel, iterations=1)
-        projection = np.sum(binary_image, axis=1)
-        print(f"Projection values: {projection}")
-        
-        # Simple threshold = 20% of max projection
-        threshold = np.percentile(projection, 15)
-        
-        # Avoid zero-threshold edge case
-        if threshold == 0:
-            logger.warning("Projection threshold is zero. Check your image or threshold logic.")
-            return []
-        
-        line_indices = np.where(projection > threshold)[0]
-        lines = []
-        if len(line_indices) == 0:
-            logger.warning("No text lines detected.")
-            return lines
+def segment_lines(image):
+    # Convert to grayscale if needed
+    if len(image.shape) == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        # Group rows into line segments
-        start_idx = line_indices[0]
-        for i in range(1, len(line_indices)):
-            if line_indices[i] - line_indices[i - 1] > min_gap:
-                lines.append(binary_image[start_idx:line_indices[i], :])
-                start_idx = line_indices[i]
-        # Append the last line segment
-        lines.append(binary_image[start_idx:, :])
-        return lines
-    except Exception as e:
-        logger.error(f"Error in line segmentation: {e}")
-        return []
+    # Threshold the image to binary
+    _, thresh = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+    # Sum pixel values horizontally
+    horizontal_projection = np.sum(thresh, axis=1)
+
+    # Detect lines based on where the projection is > 0 (text exists)
+    lines = []
+    start = None
+    for i, row_sum in enumerate(horizontal_projection):
+        if row_sum > 0 and start is None:
+            start = i
+        elif row_sum == 0 and start is not None:
+            end = i
+            line_img = thresh[start:end, :]
+            if (end - start) > 10:  # Filter small noise
+                lines.append(line_img)
+            start = None
+
+    return lines
+    
 
 def segment_words(line_image, min_gap=segmentation_config.MIN_WORD_GAP):
     """
@@ -198,32 +186,20 @@ def save_images(images, folder, prefix):
 
 ## TODO Rely on preprocessing module
 
-def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
+def segmentate_image(image: MatLike, output_dir: str) -> list[MatLike]:
     """
     Complete processing pipeline for an image: preprocess, deskew, segment lines, words, and characters.
+    Returns the segmented line images as a list of image arrays.
     """
-    # # 1. Preprocess
-    # binary = preprocess_image(image_path)
-    # if binary is None:
-    #     logger.error("Image preprocessing failed.")
-    #     return
-
-    # # # 2. Deskew
-    # binary = deskew(binary)
-
-    # 3. Line segmentation
-    
     lines = segment_lines(image)
     logger.debug(f"Detected {len(lines)} lines.")
     save_images(lines, os.path.join(output_dir, "lines"), "line")
 
-    # 4. Word segmentation (per line)
     for i, line in enumerate(lines):
         words = segment_words(line)
         logger.debug(f"Line {i + 1}: Detected {len(words)} words.")
         save_images(words, os.path.join(output_dir, f"line_{i + 1}_words"), "word")
 
-        # 5. Character segmentation (per word)
         for j, word in enumerate(words):
             characters = segment_characters(word)
             logger.debug(f"Word {j + 1}: Detected {len(characters)} characters.")
@@ -232,7 +208,9 @@ def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
                 os.path.join(output_dir, f"line_{i + 1}_word_{j + 1}_characters"),
                 "char"
             )
+
     logger.debug("Complete segmentation\n")
+    return lines
 
 if __name__ == "__main__":
     logger.info("Testing segmentation module")
@@ -244,10 +222,14 @@ if __name__ == "__main__":
     image_path = "src/seg_images/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
     logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
-    files = subprocess.check_output(["ls", image_path]).decode("utf-8")
-    file_names = re.findall(IMAGE_REGEX, files)
-    joined = "\n".join(file_names)
-    logger.debug(f"File imported:\n{joined}\n")
+    logger.info("Loading files using os.listdir()")
+    if not os.path.exists(image_path):
+        logger.error(f"Directory does not exist: {image_path}")
+        sys.exit(1)
+    files = os.listdir(image_path)
+    file_names = [f for f in files if re.match(IMAGE_REGEX, f)]
+    joined_files = "\n".join(file_names)
+    logger.debug(f"Files imported:\n{joined_files}")
 
     images = []
     for name in files:
@@ -259,7 +241,14 @@ if __name__ == "__main__":
     for i in range(len(file_names)):
         # preprocessed = preprocessing.preprocessImage(images[i])
         logger.debug(f"Segmenting image {file_names[i]}")
-        segmented = segmentate_image(file_names[i], output_dir)
+        #segmented = segmentate_image(file_names[i], output_dir)
+        segmented = segmentate_image(images[i], output_dir)
+
+        for idx, line_img in enumerate(segmented):
+            cv2.imshow(f"Line {idx+1}", line_img)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
         event = input("Press Enter to continue...\nPress q to exit...")
         if event == "q":
             break
