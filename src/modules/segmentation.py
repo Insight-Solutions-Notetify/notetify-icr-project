@@ -9,6 +9,7 @@ import subprocess
 import re
 import logging
 import preprocessing
+import matplotlib.pyplot as plt
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
@@ -149,28 +150,80 @@ def segment_words(line_image, min_gap=segmentation_config.MIN_WORD_GAP):
         logger.error(f"Error in word segmentation: {e}")
         return []
 
-def segment_characters(word_image, min_char_size=segmentation_config.MIN_CHAR_SIZE):
+def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CHAR_SIZE):
     """
     Segment a word image into individual characters using contour detection.
     """
+    ## TODO
+    # 1. Ensure the input image is binary - DONE
+    # 2. Find contours of characters (white characters on black background) - DONE
+    # 3. If contours overlap in the x-direction, merge them - DONE
+    # 4. Filter out small contours based on area and aspect ratio - DONE
+    # 5. Optional: resize the character to a fixed size (e.g., 26x26) - DONE
+    # 6. Return a list of character images as a list
+    # 7. For testing: display the word image with vertical gaps
     try:
-        # We assume word_image is already binarized
-        contours, _ = cv2.findContours(word_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        characters = []
+        # Testing only (remove later) - display already binarized word image
+        binary = cv2.threshold(word_image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        flipped = cv2.bitwise_not(binary)
+        # gray = cv2.cvtColor(word_image, cv2.COLOR_BGR2GRAY) if len(word_image.shape) == 3 else word_img
 
-        # Sort contours from left-to-right by x-coordinate
-        for contour in sorted(contours, key=lambda c: cv2.boundingRect(c)[0]):
-            x, y, w, h = cv2.boundingRect(contour)
-            # Filter out small blobs
-            if w >= min_char_size[0] and h >= min_char_size[1]:
-                char = word_image[y:y + h, x:x + w]
-                # Optional: resize the character
-                char_resized = cv2.resize(char, (32, 32), interpolation=cv2.INTER_AREA)
-                characters.append(char_resized)
-        return characters
+        # Find contours of characters
+        cnts, _ = cv2.findContours(flipped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Sort contours from left to right based on x-coord
+        cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
+
+        word_image = cv2.cvtColor(word_image, cv2.COLOR_GRAY2BGR)
+
+        logger.debug(f"Detected {len(cnts)} contours.")
+        # Merge overlapping contours in the x-direction
+        logger.debug("Merging overlapping contours")
+        for i in range(len(cnts) - 1):
+            for j in range(i + 1, len(cnts)):
+                if len(cnts[i]) == 0:
+                    continue
+                x1, y1, w1, h1 = cv2.boundingRect(cnts[i])
+                x2, y2, w2, h2 = cv2.boundingRect(cnts[j])
+                if x2 - (x1 + w1) < segmentation_config.MERGING_MIN_X:
+                    if y2 - (y1 + h1) < segmentation_config.MERGING_MIN_Y:
+                        if w1 + w2 > char_size[0]:
+                            cnts[i] = np.concatenate((cnts[i], cnts[j]))
+                            cnts[j] = np.array([])
+        
+        # Remove empty contours
+        cnts = [c for c in cnts if len(c) > 0]
+        logger.debug(f"Detected {len(cnts)} contours after merging.")
+
+        cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
+        characters_images = []
+        for c in cnts:
+            x, y, w, h = cv2.boundingRect(c)
+            area = w * h
+
+            # Filter out small contours based on area and aspect ratio
+            if area < word_image.shape[0] * segmentation_config.HEIGHT_INFLUENCE:
+                continue
+            
+            # # TESTING REMOVE LATER
+            # cv2.drawContours(word_image, [c], -1, (0, 255, 0), 1)
+            # cv2.imshow("Word", word_image)
+            # cv2.waitKey(0)
+
+            char_resized = cv2.resize(binary[0:binary.shape[0],
+                                             max(0, x - segmentation_config.WIDTH_CHAR_BUFFER):
+                                             min(binary.shape[1],
+                                             x + w + segmentation_config.WIDTH_CHAR_BUFFER)], 
+                                      segmentation_config.IMAGE_DIMS, 
+                                      interpolation=cv2.INTER_AREA)
+            
+            characters_images.append(char_resized)
+        
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
         return []
+
+    return characters_images
 
 def save_images(images, folder, prefix):
     """
@@ -217,20 +270,50 @@ def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
             )
     logger.debug("Complete segmentation\n")
 
+def test_character_segmentation(word: str, output_dir: str) -> None:
+    """
+    Test the character segmentation function on a sample image of words.
+    """
+    logger.debug("Testing character segmentation alone")
+    image = cv2.imread(f"./src/NCR_samples/{word}", cv2.IMREAD_GRAYSCALE)
+    if image is None:
+        logger.error(f"Image not found at {word}")
+        return
+    characters = segment_characters(image)
+    logger.debug(f"Detected {len(characters)} characters.")
+    if len(characters) == 1:
+        save_images(characters, os.path.join(output_dir, f"words_{word}"), "word")
+    else:
+        save_images(characters, os.path.join(output_dir, f"words_{word}"), "word" )
+    logger.debug("Character segmentation test complete.")
+
 if __name__ == "__main__":
     logger.info("Testing segmentation module")
 
     output_dir = "segmented_output"
+    file_names = []
+    user = input("Use 'ls' or np.endswith(t or f)?:")
 
-    # Run through all the user-inputted files to ensure proper handling of images (basis)
-    # NCR generic sample retrieval
-    image_path = "src/NCR_samples/"
-    IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
-    logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
-    files = subprocess.check_output(["ls", image_path]).decode("utf-8")
-    file_names = re.findall(IMAGE_REGEX, files)
-    joined = "\n".join(file_names)
-    logger.debug(f"File imported:\n{joined}\n")
+    if user == "f":
+        image_path = "src/NCR_samples/" # Add your directory here
+        # Use specific file instead
+        # os.path.join()
+        file_names = []
+        for subdir, _, files in os.walk(image_path):
+            for file in files:
+                if file.endswith(".jpg"):
+                    file_names.append(file)
+    
+    elif user == "t":
+        # Run through all the user-inputted files to ensure proper handling of images (basis)
+        # NCR generic sample retrieval
+        image_path = "src/NCR_samples/"
+        IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
+        logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
+        files = subprocess.check_output(["ls", image_path]).decode("utf-8")
+        file_names = re.findall(IMAGE_REGEX, files)
+        joined = "\n".join(file_names)
+        logger.debug(f"File imported:\n{joined}\n")
 
     images = []
     for name in file_names:
@@ -240,11 +323,12 @@ if __name__ == "__main__":
             logger.warning(f"{name} not found in NCR_samples... skipping")
     
     for i in range(len(file_names)):
+        logger.debug("Begining segmentation")
         # preprocessed = preprocessing.preprocessImage(images[i])
+        # segmented = segmentate_image(images[i], output_dir)
+
+        # FOR DEVELOPMENT TESTING
         logger.debug(f"Segmenting image {file_names[i]}")
-        segmented = segmentate_image(file_names[i], output_dir)
-        event = input("Press Enter to continue...\nPress q to exit...")
-        if event == "q":
-            break
+        segmented = test_character_segmentation(file_names[i], output_dir)
     
     logger.info("Complete segmentation module")
