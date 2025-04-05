@@ -214,19 +214,13 @@ def save_images(images, folder, prefix):
     for i, img in enumerate(images):
         cv2.imwrite(f"{folder}/{prefix}_{i + 1}.png", img)
 
-def segmentate_image(image_path: str, output_dir: str):
+def segmentate_image(image: MatLike, output_dir: str):
     """
     Complete processing pipeline for an image: preprocess, segment lines, segment words.
     """
     logger.info("Starting segmentation pipeline.")
-
-    # Preprocess the image
-    binary = preprocess_image(image_path)
-    if binary is None:
-        logger.error("Image preprocessing failed.")
-        return
-
     # Segment lines
+    binary = cv2.threshold(image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     lines = segment_lines(binary)
     logger.debug(f"Detected {len(lines)} lines.")
     save_images(lines, os.path.join(output_dir, "lines"), "line")
@@ -259,24 +253,30 @@ def test_character_segmentation(word: str, output_dir: str) -> None:
         save_images(characters, os.path.join(output_dir, f"words_{word}"), "character" )
     logger.debug("Character segmentation test complete.")
 
-def test_word_segmentation(word: str, output_dir: str) -> None:
+def test_word_segmentation(line: str, output_dir: str) -> None:
     """
     Test the word segmentation function on a sample image of lines
     """
     logger.debug("Testing word segmentation alone")
-    image = cv2.imread(f"./src/NCR_samples/{word}", cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread(f"./src/NCR_samples/{line}", cv2.IMREAD_GRAYSCALE)
     if image is None:
-        logger.error(f"Image not found at {word}")
+        logger.error(f"Image not found at {line}")
         return
     
     binary = cv2.threshold(image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    characters = segment_words(binary)
-    logger.debug(f"Detected {len(characters)} words.")
+    words = segment_words(binary)
+    logger.debug(f"Detected {len(words)} words.")
 
-    if len(characters) == 1:
-        save_images(characters, os.path.join(output_dir, f"line_{word}"), "word")
+    if len(words) == 1:
+        save_images(words, os.path.join(output_dir, f"line_{line}"), "word")
     else:
-        save_images(characters, os.path.join(output_dir, f"line_{word}"), "word" )
+        save_images(words, os.path.join(output_dir, f"line_{line}"), "word" )
+
+    characters = [segment_characters(word) for word in words]
+
+    for i, chars in enumerate(characters):
+        save_images(chars, os.path.join(output_dir, f"line_{line}_word_{i}"), "character")
+
     logger.debug("Word segmentation test complete.")
 
 def test_line_segmentation(word: str, output_dir: str) -> None:
