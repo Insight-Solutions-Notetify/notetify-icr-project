@@ -3,7 +3,7 @@ class SegmentationConfig:
     MIN_CHAR_SIZE = (10, 5) # Pixels may be larger or smaller than expected
     MAX_VALUE = 255
     MIN_WORD_GAP = 5
-    MIN_LINE_GAP = 5
+    MIN_LINE_GAP = 4
 
     # Character Segmentation
     MERGING_MIN_X = 3

@@ -15,7 +15,7 @@ from src.config.segmentation_config import segmentation_config
 from src.modules.logger import logger, log_execution_time
 
 @log_execution_time
-def segment_lines(binary_image, min_gap=50):
+def segment_lines_orginal(binary_image, min_gap=50):
     """
     Segment the binary image into individual lines based on horizontal projection.
     """
@@ -44,7 +44,41 @@ def segment_lines(binary_image, min_gap=50):
     except Exception as e:
         logger.error(f"Error in line segmentation: {e}")
         return []
+    
+@log_execution_time
+def segment_lines_new(image):
+    """
+    Segment the binary image into individual lines based on horizontal projection.
+    """
+    try:
+        # Convert to grayscale if needed
+        if len(image.shape) == 3:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
+        # Threshold the image to binary
+        _, thresh = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+
+        # Sum pixel values horizontally
+        horizontal_projection = np.sum(thresh, axis=1)
+
+        # Detect lines based on where the projection is > 0 (text exists)
+        lines = []
+        start = None
+        for i, row_sum in enumerate(horizontal_projection):
+            if row_sum > 0 and start is None:
+                start = i
+            elif row_sum == 0 and start is not None:
+                end = i
+                line_img = thresh[start:end, :]
+                if (end - start) > 10:  # Filter small noise
+                    lines.append(line_img)
+                start = None
+
+        return lines
+    except Exception as e:
+        logger.error(f"Error in line segmentation: {e}")
+        return []
+    
 @log_execution_time
 def segment_words(line_image: MatLike, threshold_factor=1.5, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER):
     """
@@ -328,7 +362,7 @@ if __name__ == "__main__":
         logger.debug(f"File imported:\n{joined}\n")
 
     images = []
-    for name in file_names:
+    for name in files:
         if os.path.exists(image_path + name):
             images.append(cv2.imread(f"{image_path}{name}", cv2.IMREAD_GRAYSCALE))
         else:
