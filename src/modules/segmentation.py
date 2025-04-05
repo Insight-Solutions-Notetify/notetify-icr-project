@@ -15,7 +15,7 @@ from src.config.segmentation_config import segmentation_config
 from src.modules.logger import logger, log_execution_time
 
 @log_execution_time
-def segment_lines_orginal(binary_image, min_gap=50):
+def segment_lines_original(binary_image, min_gap=50):
     """
     Segment the binary image into individual lines based on horizontal projection.
     """
@@ -80,7 +80,11 @@ def segment_lines_new(image):
         return []
     
 @log_execution_time
-def segment_words(line_image: MatLike, threshold_factor=1.5, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER):
+def segment_lines(image: MatLike) -> list:
+    pass
+    
+@log_execution_time
+def segment_words(line_image: MatLike, threshold_factor=1.5, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
     """
     Segment a line image into individual words based on vertical projection.
     """
@@ -135,7 +139,7 @@ def segment_words(line_image: MatLike, threshold_factor=1.5, WIDTH_BUFFER=segmen
         return []
 
 @log_execution_time
-def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CHAR_SIZE, MERGE_MIN_X=segmentation_config.MERGING_MIN_X, MERGE_MIN_Y=segmentation_config.MERGING_MIN_Y, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER, HEIGHT_INF=segmentation_config.HEIGHT_INFLUENCE):
+def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CHAR_SIZE, MERGE_MIN_X=segmentation_config.MERGING_MIN_X, MERGE_MIN_Y=segmentation_config.MERGING_MIN_Y, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER, HEIGHT_INF=segmentation_config.HEIGHT_INFLUENCE) -> list:
     """
     Segment a word image into individual characters using contour detection.
     """
@@ -201,13 +205,11 @@ def segmentImage(image: MatLike, model=None) -> tuple:
     segmented_metadata = []
 
     # Line segmentation
-    # line_images = segment_lines(image)
-    line_images = image
-    line_idx = 0
+    line_images = segment_lines(image)
 
     # Word Segmentation
-    for line_idx, line_img in enumerate(range(1)):#in enumerate(line_images):
-        word_images = segment_words(line_images)
+    for line_idx, line_img in enumerate(line_images):
+        word_images = segment_words(line_img)
 
         # Character Segmentation
         for word_idx, word_img in enumerate(word_images):
@@ -310,24 +312,24 @@ def test_word_segmentation(line: str, output_dir: str) -> None:
 
     logger.debug("Word segmentation test complete.")
 
-def test_line_segmentation(word: str, output_dir: str) -> None:
+def test_line_segmentation(image: str, output_dir: str) -> None:
     """
     Test the word segmentation function on a sample image of lines
     """
     logger.debug("Testing line segmentation alone")
-    image = cv2.imread(f"./src/NCR_samples/{word}", cv2.IMREAD_GRAYSCALE)
-    if image is None:
-        logger.error(f"Image not found at {word}")
+    img = cv2.imread(f"./src/NCR_samples/{image}", cv2.IMREAD_GRAYSCALE)
+    if img is None:
+        logger.error(f"Image not found at {image}")
         return
     
-    binary = cv2.threshold(image, 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    characters = segment_lines(binary)
+    binary = cv2.threshold(img, 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    characters = segment_lines_new(binary)
     logger.debug(f"Detected {len(characters)} lines.")
 
     if len(characters) == 1:
-        save_images(characters, os.path.join(output_dir, f"image_{word}"), "lines")
+        save_images(characters, os.path.join(output_dir, f"image_{image}"), "lines")
     else:
-        save_images(characters, os.path.join(output_dir, f"image_{word}"), "lines" )
+        save_images(characters, os.path.join(output_dir, f"image_{image}"), "lines" )
     logger.debug("Line segmentation test complete.")
 
 if __name__ == "__main__":
@@ -370,16 +372,17 @@ if __name__ == "__main__":
         
     for i in range(len(file_names)):
         logger.debug(f"Beginning segmentation on {file_names[i]}")
-        binary = cv2.threshold(images[i], 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        segmented_images, segmented_metadata = segmentImage(binary) # Should return a list of dict elements that hold the metadata and image of characters
+        # binary = cv2.threshold(images[i], 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        # segmented_images, segmented_metadata = segmentImage(binary) # Should return a list of dict elements that hold the metadata and image of characters
 
-        import json
-        file_path = f"{output_dir}/{i}image.json"
-        with open(file_path, 'w') as json_file:
-            json.dump(segmented_metadata, json_file)
+        # import json
+        # file_path = f"{output_dir}/{i}image.json"
+        # with open(file_path, 'w') as json_file:
+        #     json.dump(segmented_metadata, json_file)
+
         # FOR DEVELOPMENT TESTING
         # logger.debug(f"Test segmenting image {file_names[i]}")
-        # segmented = test_line_segmentation(file_names[i], output_dir)
+        segmented = test_line_segmentation(file_names[i], output_dir)
         # segmented = test_word_segmentation(file_names[i], output_dir)
         # segmented = test_character_segmentation(file_names[i], output_dir)
     
