@@ -85,31 +85,55 @@ def segment_lines(binary_image, min_gap=50):
         logger.error(f"Error in line segmentation: {e}")
         return []
 
-def segment_words(line_image, min_gap=10):
+def segment_words(line_image: MatLike, min_gap=10, threshold_factor=1.5):
     """
     Segment a line image into individual words based on vertical projection.
     """
     try:
-        projection = np.sum(line_image, axis=0)
-        threshold = np.max(projection) * 0.1
-        
-        # Avoid zero-threshold edge case
-        if threshold == 0:
-            logger.warning("Word projection threshold is zero.")
+        flipped = cv2.bitwise_not(line_image)
+
+        # Vertical Projection
+        projection = np.sum(flipped, axis=0)
+
+        # Find where text is present
+        text_columns = np.where(projection > 0)[0]
+        if len(text_columns) == 0:
+            logger.warning("No text found in line.")
             return []
         
-        word_indices = np.where(projection > threshold)[0]
-        words = []
-        if len(word_indices) == 0:
-            logger.warning("No words detected in the line.")
-            return words
+        # Group continous non-zero regions (start-end of character/word blobs)
+        boundaries = []
+        start = text_columns[0]
 
-        start_idx = word_indices[0]
-        for i in range(1, len(word_indices)):
-            if word_indices[i] - word_indices[i - 1] > min_gap:
-                words.append(line_image[:, start_idx:word_indices[i]])
-                start_idx = word_indices[i]
-        words.append(line_image[:, start_idx:])
+        for i in range(1, len(text_columns)):
+            if text_columns[i] != text_columns[i - 1] + 1:
+                end = text_columns[i - 1]
+                boundaries.append((start, end))
+                start = text_columns[i]
+        boundaries.append((start, text_columns[-1]))
+
+        # Compute gaps between blobs
+        gaps = [boundaries[i + 1][0] - boundaries[i][1] for i in range(len(boundaries) - 1)]
+        if not gaps:
+            return [line_image[:, b[0]:b[1]+1] for b in boundaries]
+        
+        # Estimate dynamic threshold for word separation
+        median_gap = np.median(gaps)
+        word_gap_thresh = median_gap * threshold_factor
+
+        # Segment words
+        words = []
+        current_word_start = boundaries[0][0]
+
+        for i in range(len(gaps)):
+            if gaps[i] > word_gap_thresh:
+                current_word_end = boundaries[i][1]
+                words.append(line_image[:, max(0, current_word_start - segmentation_config.WIDTH_CHAR_BUFFER):min(line_image.shape[1], current_word_end + 1 + segmentation_config.WIDTH_CHAR_BUFFER)])
+                current_word_start = boundaries[i + 1][0]
+
+        # Append the last word
+        words.append(line_image[:, current_word_start:boundaries[-1][1] + 1])
+
         return words
     except Exception as e:
         logger.error(f"Error in word segmentation: {e}")
@@ -224,9 +248,11 @@ def test_character_segmentation(word: str, output_dir: str) -> None:
     if image is None:
         logger.error(f"Image not found at {word}")
         return
+    
     binary = cv2.threshold(image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     characters = segment_characters(binary)
     logger.debug(f"Detected {len(characters)} characters.")
+
     if len(characters) == 1:
         save_images(characters, os.path.join(output_dir, f"words_{word}"), "character")
     else:
@@ -242,8 +268,11 @@ def test_word_segmentation(word: str, output_dir: str) -> None:
     if image is None:
         logger.error(f"Image not found at {word}")
         return
-    characters = segment_words(image)
+    
+    binary = cv2.threshold(image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    characters = segment_words(binary)
     logger.debug(f"Detected {len(characters)} words.")
+
     if len(characters) == 1:
         save_images(characters, os.path.join(output_dir, f"line_{word}"), "word")
     else:
@@ -259,8 +288,11 @@ def test_line_segmentation(word: str, output_dir: str) -> None:
     if image is None:
         logger.error(f"Image not found at {word}")
         return
-    characters = segment_lines(image)
+    
+    binary = cv2.threshold(image, 0, MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    characters = segment_lines(binary)
     logger.debug(f"Detected {len(characters)} lines.")
+
     if len(characters) == 1:
         save_images(characters, os.path.join(output_dir, f"image_{word}"), "lines")
     else:
@@ -310,7 +342,7 @@ if __name__ == "__main__":
         # FOR DEVELOPMENT TESTING
         logger.debug(f"Segmenting image {file_names[i]}")
         # segmented = test_line_segmentation(file_names[i], output_dir)
-        # segmented = test_word_segmentation(file_names[i], output_dir)
-        segmented = test_character_segmentation(file_names[i], output_dir)
+        segmented = test_word_segmentation(file_names[i], output_dir)
+        # segmented = test_character_segmentation(file_names[i], output_dir)
     
     logger.info("Complete segmentation module")
