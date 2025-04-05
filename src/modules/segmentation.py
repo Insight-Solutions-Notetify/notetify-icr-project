@@ -99,12 +99,14 @@ def segment_lines(binary_image, min_gap=segmentation_config.MIN_LINE_GAP):
     """
     try:
         plot_projection(binary_image)
+        
         kernel = np.ones((2,2), np.uint8)  # Small kernel to remove noise
         binary_image = cv2.erode(binary_image, kernel, iterations=1)
         projection = np.sum(binary_image, axis=1)
+        print(f"Projection values: {projection}")
         
         # Simple threshold = 20% of max projection
-        threshold = np.max(projection) * 0.1
+        threshold = np.percentile(projection, 15)
         
         # Avoid zero-threshold edge case
         if threshold == 0:
@@ -201,13 +203,13 @@ def segmentate_image(image: MatLike, output_dir: str) -> MatLike:
     Complete processing pipeline for an image: preprocess, deskew, segment lines, words, and characters.
     """
     # # 1. Preprocess
-    binary = preprocess_image(image_path)
-    if binary is None:
-        logger.error("Image preprocessing failed.")
-        return
+    # binary = preprocess_image(image_path)
+    # if binary is None:
+    #     logger.error("Image preprocessing failed.")
+    #     return
 
-    # # 2. Deskew
-    binary = deskew(binary)
+    # # # 2. Deskew
+    # binary = deskew(binary)
 
     # 3. Line segmentation
     
@@ -243,7 +245,10 @@ if __name__ == "__main__":
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
     logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
     files = os.listdir(image_path)
-    logger.debug(f"File imported:\n{"\t".join(files)}\n")
+    nl = '\n'
+    t1 = '\t'
+    logger.debug(f"File imported:{nl}{t1.join(files)}{nl}")
+
 
     images = []
     for name in files:

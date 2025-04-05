@@ -242,7 +242,9 @@ if __name__ == "__main__":
     image_path = "src/NCR_samples/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
     files = os.listdir(image_path)
-    logger.debug(f"File imported:\n{"\t".join(files)}\n")
+    nl = '\n'
+    t1 = '\t'
+    logger.debug(f"File imported:{nl}{t1.join(files)}{nl}")
     # print(file_names)
 
     images = []
