@@ -190,10 +190,63 @@ def segmentate_image(image: MatLike, output_dir: str):
     logger.info("Segmentation pipeline complete.")
 
 @log_execution_time
-def segmentImage(image: MatLike) -> list:
-    segment_characters = []
+def segmentImage(image: MatLike, model=None) -> tuple:
+    """
+    Segmentation pipeline to break down iamges into lines, words, and characters. (Metadata + character images)
+    """
+    segmented_images = []
+    segmented_metadata = []
 
-    line_images = segment_lines(image)
+    # Line segmentation
+    # line_images = segment_lines(image)
+    line_images = image
+    line_idx = 0
+
+    # Word Segmentation
+    for line_idx, line_img in enumerate(range(1)):#in enumerate(line_images):
+        word_images = segment_words(line_images)
+
+        # Character Segmentation
+        for word_idx, word_img in enumerate(word_images):
+            char_images = segment_characters(word_img)
+
+            # Run character recognition here since post_processing is done already
+            predicted_characters = []
+            ## THIS METHOD IS JUST HERE TO KEEP TRACK OF IT FOR THE FUTURE (NOT USED)
+            if model is not None: 
+                predictions = model.predict(char_images)
+
+                if len(predictions) < len(word_img):
+                    logger.error("Failed to obtain predictions for all characters")
+                    return []
+                for predict_char in predictions:
+                    if predict_char[1] > 0.5: # Confidence saved in model
+                        predicted_characters.append(predict_char[0])
+                    else:
+                        predicted_characters.append(' ')
+
+                # Text Hierarchy Preserving
+                for char_idx, char in enumerate(predicted_characters):
+                    segmented_metadata.append({
+                        'line_idx': line_idx,
+                        'word_idx': word_idx,
+                        'char_idx': char_idx,
+                        'char': char
+                    })
+            else:
+                # Text Hierarchy Preserving
+                for char_idx, char_img in enumerate(char_images):
+                    # logger.debug(f"Added another char to word: {word_idx}")
+                    segmented_images.append(char_img)
+                    segmented_metadata.append({
+                        'line_idx': line_idx,
+                        'word_idx': word_idx,
+                        'char_idx': char_idx,
+                        'image_idx': len(char_images) - 1 # index into char_images
+                    })
+
+    logger.debug(f"Segmented Data: {segmented_metadata}")
+    return char_images, segmented_metadata
 
 def save_images(images, folder, prefix):
     """
@@ -273,6 +326,9 @@ if __name__ == "__main__":
     logger.info("Starting segmentation module")
 
     output_dir = "segmented_output"
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
     file_names = []
     user = input("Use 'ls' or np.endswith(t or f)?:")
 
@@ -300,21 +356,23 @@ if __name__ == "__main__":
     images = []
     for name in file_names:
         if os.path.exists(image_path + name):
-            images.append(cv2.imread(f"{image_path}{name}"))
+            images.append(cv2.imread(f"{image_path}{name}", cv2.IMREAD_GRAYSCALE))
         else:
             logger.warning(f"{name} not found in NCR_samples... skipping")
-    
+        
     for i in range(len(file_names)):
-        logger.debug("Begining segmentation")
-        image = cv2.imread(f"./src/NCR_samples/{file_names[i]}", cv2.IMREAD_GRAYSCALE)
-        binary = cv2.threshold(image, 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        # segmented = segmentImage(images[i]) # Should return a list of dict elements that hold the metadata and image of characters
+        logger.debug(f"Beginning segmentation on {file_names[i]}")
+        binary = cv2.threshold(images[i], 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+        segmented_images, segmented_metadata = segmentImage(binary) # Should return a list of dict elements that hold the metadata and image of characters
 
-
+        import json
+        file_path = f"{output_dir}/{i}image.json"
+        with open(file_path, 'w') as json_file:
+            json.dump(segmented_metadata, json_file)
         # FOR DEVELOPMENT TESTING
-        logger.debug(f"Test segmenting image {file_names[i]}")
+        # logger.debug(f"Test segmenting image {file_names[i]}")
         # segmented = test_line_segmentation(file_names[i], output_dir)
-        segmented = test_word_segmentation(file_names[i], output_dir)
+        # segmented = test_word_segmentation(file_names[i], output_dir)
         # segmented = test_character_segmentation(file_names[i], output_dir)
     
     logger.info("Complete segmentation module")
