@@ -68,7 +68,10 @@ def setup_logger(config=logger_config) -> logging.Logger:
     # Current session log
     last_path = os.path.join(config.LOGS_FOLDER, config.LAST_FILE_NAME)
     if os.path.exists(last_path):
-        os.remove(last_path)
+        try:
+            os.remove(last_path)
+        except PermissionError:
+            print("Already running")
 
     session_handler = logging.FileHandler(last_path)
     session_handler.setFormatter(file_formatter)
