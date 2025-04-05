@@ -375,14 +375,14 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
         - There aspect ratio is lower than MAX_AR (ar < AR)'''
 
         if h > preprocess_config.MAX_HEIGHT or ar > preprocess_config.MAX_AR:
-            logger.warning(f"Remvoing contour at ({x}, {y}) with height: {h} and ar: {ar}")
+            # logger.warning(f"Remvoing contour at ({x}, {y}) with height: {h} and ar: {ar}")
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
             continue
 
         if area < preprocess_config.MAX_AREA and area > preprocess_config.MIN_AREA:
             logger.debug(f"Keeping contour at ({x}, {y}) area: {ar}")
         else:
-            logger.warning(f"Removing contour over limits at ({x}, {y}) area: {area}")
+            # logger.warning(f"Removing contour over limits at ({x}, {y}) area: {ar}")
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1) # Possibly smaller contours (smudges)
 
     logger.debug("Resulting highlighting complete")
