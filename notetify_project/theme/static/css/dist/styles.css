@@ -14,9 +14,12 @@
     --color-blue-700: oklch(48.8% 0.243 264.376);
     --color-blue-800: oklch(42.4% 0.199 265.638);
     --color-gray-50: oklch(98.5% 0.002 247.839);
+    --color-gray-500: oklch(55.1% 0.027 264.364);
     --color-gray-800: oklch(27.8% 0.033 256.848);
     --color-zinc-600: oklch(44.2% 0.017 285.786);
     --color-zinc-700: oklch(37% 0.013 285.805);
+    --color-stone-100: oklch(97% 0.001 106.424);
+    --color-stone-700: oklch(37.4% 0.01 67.558);
     --color-stone-900: oklch(21.6% 0.006 56.043);
     --color-black: #000;
     --color-white: #fff;
@@ -369,6 +372,10 @@
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .outline-dashed {
+    --tw-outline-style: dashed;
+    outline-style: dashed;
+  }
   .file\:mr-4::file-selector-button {
     margin-right: calc(var(--spacing) * 4);
   }
@@ -412,8 +419,18 @@
     }
   }
   @media (prefers-color-scheme: dark) {
-    .dark\:border-white {
-      border-color: var(--color-white);
+    .dark\:border-gray-500 {
+      border-color: var(--color-gray-500);
+    }
+  }
+  @media (prefers-color-scheme: dark) {
+    .dark\:bg-stone-100 {
+      background-color: var(--color-stone-100);
+    }
+  }
+  @media (prefers-color-scheme: dark) {
+    .dark\:bg-stone-700 {
+      background-color: var(--color-stone-700);
     }
   }
   @media (prefers-color-scheme: dark) {
