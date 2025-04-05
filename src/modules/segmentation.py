@@ -244,11 +244,10 @@ if __name__ == "__main__":
     image_path = "src/seg_images/"
     IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
     logger.debug(f"IMAGE_REGEX: {IMAGE_REGEX}\n")
-    files = os.listdir(image_path)
-    nl = '\n'
-    t1 = '\t'
-    logger.debug(f"File imported:{nl}{t1.join(files)}{nl}")
-
+    files = subprocess.check_output(["ls", image_path]).decode("utf-8")
+    file_names = re.findall(IMAGE_REGEX, files)
+    joined = "\n".join(file_names)
+    logger.debug(f"File imported:\n{joined}\n")
 
     images = []
     for name in files:
@@ -257,9 +256,12 @@ if __name__ == "__main__":
         else:
             logger.warning(f"{name} not found in images... skipping")
     
-    for i in range(len(files)):
-        preprocessed = preprocessing.preprocessImage(images[i])
-        logger.debug(f"Segmenting image {files[i]}")
-        segmented = segmentate_image(preprocessed, output_dir)
+    for i in range(len(file_names)):
+        # preprocessed = preprocessing.preprocessImage(images[i])
+        logger.debug(f"Segmenting image {file_names[i]}")
+        segmented = segmentate_image(file_names[i], output_dir)
+        event = input("Press Enter to continue...\nPress q to exit...")
+        if event == "q":
+            break
     
     logger.info("Complete segmentation module")
