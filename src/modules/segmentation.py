@@ -323,13 +323,26 @@ def test_line_segmentation(image: str, output_dir: str) -> None:
         return
     
     binary = cv2.threshold(img, 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    characters = segment_lines_new(binary)
-    logger.debug(f"Detected {len(characters)} lines.")
+    lines = segment_lines_new(binary)
+    logger.debug(f"Detected {len(lines)} lines.")
 
-    if len(characters) == 1:
-        save_images(characters, os.path.join(output_dir, f"image_{image}"), "lines")
+    if len(lines) == 1:
+        save_images(lines, os.path.join(output_dir, f"image_{image}"), "line")
     else:
-        save_images(characters, os.path.join(output_dir, f"image_{image}"), "lines" )
+        save_images(lines, os.path.join(output_dir, f"image_{image}"), "line" )
+
+    words = [segment_words(line) for line in lines]
+    if len(words) != 0:
+        for word_idx, word in enumerate(words):
+            save_images(word, os.path.join(output_dir, f"line_{image}_word_{word_idx}"), "word")
+
+    for line_idx, word_line in enumerate(words):
+        for word_idx, words in enumerate(word_line):
+            characters = [segment_characters(word) for word in words]
+
+            for char_idx, chars in enumerate(characters):
+                save_images(chars, os.path.join(output_dir, f"line_{line_idx}_word_{word_idx}_char{char_idx}"), "char")
+
     logger.debug("Line segmentation test complete.")
 
 if __name__ == "__main__":
@@ -364,7 +377,8 @@ if __name__ == "__main__":
         logger.debug(f"File imported:\n{joined}\n")
 
     images = []
-    for name in files:
+    for name in file_names:
+        print(name)
         if os.path.exists(image_path + name):
             images.append(cv2.imread(f"{image_path}{name}", cv2.IMREAD_GRAYSCALE))
         else:
