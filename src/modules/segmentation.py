@@ -37,7 +37,7 @@ def segment_lines_original(binary_image, min_gap=50):
         start_idx = line_indices[0]
         for i in range(1, len(line_indices)):
             if line_indices[i] - line_indices[i - 1] > min_gap:
-                lines.append(binary_image[start_idx:line_indices[i], :])
+                lines.append(binary_image[max(0, start_idx - segmentation_config.WIDTH_CHAR_BUFFER):min(binary_image,line_indices[i]), :])
                 start_idx = line_indices[i]
         lines.append(binary_image[start_idx:, :])
         return lines
@@ -51,15 +51,11 @@ def segment_lines_new(image):
     Segment the binary image into individual lines based on horizontal projection.
     """
     try:
-        # Convert to grayscale if needed
-        if len(image.shape) == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Threshold the image to binary
-        _, thresh = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        # Flip for processing
+        flipped = cv2.bitwise_not(image)
 
         # Sum pixel values horizontally
-        horizontal_projection = np.sum(thresh, axis=1)
+        horizontal_projection = np.sum(flipped, axis=1)
 
         # Detect lines based on where the projection is > 0 (text exists)
         lines = []
@@ -69,7 +65,7 @@ def segment_lines_new(image):
                 start = i
             elif row_sum == 0 and start is not None:
                 end = i
-                line_img = thresh[start:end, :]
+                line_img = image[max(0, start - segmentation_config.WIDTH_CHAR_BUFFER):min(image.shape[0], end), :]
                 if (end - start) > 10:  # Filter small noise
                     lines.append(line_img)
                 start = None
@@ -84,11 +80,13 @@ def segment_lines(image: MatLike) -> list:
     pass
     
 @log_execution_time
-def segment_words(line_image: MatLike, threshold_factor=1.5, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
+def segment_words(line_image: MatLike, threshold_factor=1.8, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
     """
     Segment a line image into individual words based on vertical projection.
     """
     try:
+        cv2.imshow("Before Word Seg", line_image)
+        cv2.waitKey(0)
         flipped = cv2.bitwise_not(line_image)
 
         # Vertical Projection
@@ -173,14 +171,14 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
 
         cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
         characters_images = []
-        for c in cnts:
+        for i, c in enumerate(cnts):
             x, y, w, h = cv2.boundingRect(c)
             area = w * h
 
             # Filter out small contours based on area and aspect ratio
             if area < word_image.shape[0] * HEIGHT_INF:
                 continue
-
+            logger.debug(f"Testing {i}")
             char_resized = cv2.resize(word_image[0:word_image.shape[0],
                                              max(0, x - WIDTH_BUFFER):
                                              min(word_image.shape[1],
@@ -334,14 +332,19 @@ def test_line_segmentation(image: str, output_dir: str) -> None:
     words = [segment_words(line) for line in lines]
     if len(words) != 0:
         for word_idx, word in enumerate(words):
-            save_images(word, os.path.join(output_dir, f"line_{image}_word_{word_idx}"), "word")
+            for img in word:
+                cv2.imshow("Image testing", img)
+                cv2.waitKey(0)
+            # save_images(word, os.path.join(output_dir, f"line_{image}_word_{word_idx}"), "word")
 
     for line_idx, word_line in enumerate(words):
         for word_idx, words in enumerate(word_line):
+            # logger.warning(f"Words: {words}")
             characters = [segment_characters(word) for word in words]
 
             for char_idx, chars in enumerate(characters):
-                save_images(chars, os.path.join(output_dir, f"line_{line_idx}_word_{word_idx}_char{char_idx}"), "char")
+                pass
+                # save_images(chars, os.path.join(output_dir, f"line_{line_idx}_word_{word_idx}_char{char_idx}"), "char")
 
     logger.debug("Line segmentation test complete.")
 
