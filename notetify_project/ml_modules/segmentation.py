@@ -279,10 +279,14 @@ def segmentImage(image: MatLike, model=None) -> tuple:
                         'image_idx': len(segmented_images) - 1 # index into char_images
                     })
 
-    logger.debug(f"Segmented Data: {segmented_metadata}")
+    # logger.debug(f"Segmented Data: {segmented_metadata}")
 
     # Reshape images to fit tensorflow input
     segmented_images = np.reshape(segmented_images, (len(segmented_images),28, 28, 1))
+
+    for img in segmented_images:
+        cv2.imshow("Char", img)
+        cv2.waitKey(0)
     return segmented_images, segmented_metadata
 
 # TESTING ONLY
