@@ -2,8 +2,6 @@
 class SegmentationConfig:
     MIN_CHAR_SIZE = (10, 5) # Pixels may be larger or smaller than expected
     MAX_VALUE = 255
-    MIN_WORD_GAP = 5
-    MIN_LINE_GAP = 4
 
     # Line Segmentation
     HEIGHT_CHAR_BUFFER = 10
@@ -13,6 +11,7 @@ class SegmentationConfig:
     # Word Segmentation
     WIDTH_CHAR_BUFFER = 10
     WORD_GAP_FACTOR = 1.8
+    MIN_WORD_IMG_HEIGHT = 40
     
     # Character Segmentation
     MERGING_MIN_X = 3
