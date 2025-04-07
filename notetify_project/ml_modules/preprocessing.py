@@ -379,7 +379,7 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1) # Possibly smaller contours (smudges)
 
     logger.debug("Resulting highlighting complete")
-    return flipImage(blurImage(cv2.bitwise_and(dilate, original_mask), 0.2))
+    return blurImage(cv2.bitwise_and(dilate, original_mask), 0.2)
 
 @log_execution_time
 def preprocessImage(input: MatLike) -> MatLike:
@@ -400,7 +400,7 @@ def preprocessImage(input: MatLike) -> MatLike:
         note = highlightBoundary(blurred)
 
         # Histogram analysis to determine the range of text colors
-        text_range, bg_range= findColorRange(note)
+        text_range, bg_range = findColorRange(note)
 
         # Exclude everything else except the actual text that make up the note
         result = highlightText(note, text_range)
