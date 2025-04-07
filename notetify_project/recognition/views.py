@@ -48,7 +48,7 @@ def upload_image(request):
 
         for char in sorted_chars:
             if char['line_idx'] != cur_line:
-                text += "&nbsp"
+                text += "<br />"
                 cur_line = char['line_idx']
                 cur_word = -1
             if char['word_idx'] != cur_word:
