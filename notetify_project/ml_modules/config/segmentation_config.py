@@ -6,12 +6,12 @@ class SegmentationConfig:
     # Line Segmentation
     HEIGHT_CHAR_BUFFER = 10
     LINE_GAP_FACTOR = 0.5
-    TEXT_LINE_THRESHOLD = 0.05
+    TEXT_LINE_THRESHOLD = 0.1
 
     # Word Segmentation
     WIDTH_CHAR_BUFFER = 10
     WORD_GAP_FACTOR = 1.8
-    MIN_WORD_IMG_HEIGHT = 40
+    MIN_WORD_IMG_HEIGHT = 30
     
     # Character Segmentation
     MERGING_MIN_X = 3
