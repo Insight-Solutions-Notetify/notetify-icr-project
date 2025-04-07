@@ -35,38 +35,6 @@ def add_padding(img: MatLike, padding, axis=0):
     return np.concatenate([pad_block, img, pad_block], axis=axis)
 
 @log_execution_time
-    
-@log_execution_time
-def segment_lines_new(image):
-    """
-    Segment the binary image into individual lines based on horizontal projection.
-    """
-    try:
-        # Flip for processing
-        flipped = cv2.bitwise_not(image)
-
-        # Sum pixel values horizontally
-        horizontal_projection = np.sum(flipped, axis=1)
-
-        # Detect lines based on where the projection is > 0 (text exists)
-        lines = []
-        start = None
-        for i, row_sum in enumerate(horizontal_projection):
-            if row_sum > 0 and start is None:
-                start = i
-            elif row_sum == 0 and start is not None:
-                end = i
-                line_img = image[max(0, start - segmentation_config.WIDTH_CHAR_BUFFER):min(image.shape[0], end), :]
-                if (end - start) > 10:  # Filter small noise
-                    lines.append(line_img)
-                start = None
-
-        return lines
-    except Exception as e:
-        logger.error(f"Error in line segmentation: {e}")
-        return []
-    
-@log_execution_time
 def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_FACTOR, text_thresh=segmentation_config.TEXT_LINE_THRESHOLD, line_padding=segmentation_config.HEIGHT_CHAR_BUFFER) -> list:
     """
     Segment lines fro ma binary image using horizontal projection and dynamic gap thresholding
@@ -314,7 +282,6 @@ def segmentImage(image: MatLike, model=None) -> tuple:
     logger.debug(f"Segmented Data: {segmented_metadata}")
 
     return segmented_images, segmented_metadata
-
 
 # TESTING ONLY
 def save_images(images, folder, prefix):

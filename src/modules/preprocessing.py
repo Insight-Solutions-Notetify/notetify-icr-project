@@ -148,12 +148,6 @@ def contrastImage(input: MatLike, bg_range=None, contrast=preprocess_config.CONT
     logger.debug("Contrast Complete\n")
     return adjusted_image
 
-# def adjustGamma(input: MatLike, gamma=1.0):
-#     ''' Adjust gamma of the image '''
-#     invGamma = 1.0 / gamma
-#     table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
-#     return cv2.LUT(input, table)
-
 def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike:
     logger.debug(f"Applying blur with strength {sigma}")
     gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), sigma)
@@ -200,7 +194,6 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
     logger.debug(f"Best Angle: {best_angle}")
     logger.debug(f"Complete correctSkew()\n")
     return corrected
-
 
 @log_execution_time
 def highlightBoundary(input: MatLike,
@@ -425,7 +418,6 @@ def preprocessImage(input: MatLike) -> MatLike:
     # return note
     # return bg_adjusted
     return result
-
 
 if __name__ == "__main__":
     logger.info("Testing preprocessing module")
