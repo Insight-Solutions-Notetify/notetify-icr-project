@@ -19,7 +19,7 @@ from ml_modules import preprocessImage, segmentImage
 model = models.load_model("model/emnist_model.keras")
 # model.load_weights("model/CNN_model_StratifiedKFold_1_EMNIST.h5")
 # model = models.load_model("model/CNN_model_StratifiedKFold_1_EMNIST.h5")
-model.load_weights("model/emnist_model.weights.h5")
+model.load_weights("model/emnist_model_loss0.68.weights.h5")
 
 def upload_image(request):
     if request.method == 'POST' and request.FILES.get('image'):
@@ -48,7 +48,7 @@ def upload_image(request):
 
         for char in sorted_chars:
             if char['line_idx'] != cur_line:
-                text += "\n"
+                text += "&nbsp"
                 cur_line = char['line_idx']
                 cur_word = -1
             if char['word_idx'] != cur_word:
@@ -84,7 +84,7 @@ def decode_prediction(predictions):
     confidence = [np.max(ix) for ix in predictions]
 
     for ix in range(len(printed_guess)):
-        if confidence[ix] <= 0.40:
+        if confidence[ix] <= 0.70:
             printed_guess[ix] = ' '
     
     return printed_guess
