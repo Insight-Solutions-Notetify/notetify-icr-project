@@ -56,7 +56,6 @@ def BGRToGRAY(input: MatLike) -> MatLike:
     
     return gray
     
-
 def GRAYToBGR(input: MatLike) -> MatLike:
     ''' Convert GRAY to BGR '''
     try:
@@ -147,12 +146,6 @@ def contrastImage(input: MatLike, bg_range=None, contrast=preprocess_config.CONT
     logger.debug("Contrast Complete\n")
     return adjusted_image
 
-# def adjustGamma(input: MatLike, gamma=1.0):
-#     ''' Adjust gamma of the image '''
-#     invGamma = 1.0 / gamma
-#     table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
-#     return cv2.LUT(input, table)
-
 def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike:
     logger.debug(f"Applying blur with strength {sigma}")
     gaussian = cv2.GaussianBlur(input, (preprocess_config.KERNEL_DIMS, preprocess_config.KERNEL_DIMS), sigma)
@@ -199,7 +192,6 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
     logger.debug(f"Best Angle: {best_angle}")
     logger.debug(f"Complete correctSkew()\n")
     return corrected
-
 
 @log_execution_time
 def highlightBoundary(input: MatLike,
@@ -360,7 +352,7 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     dilate = cv2.dilate(inpainted, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
 
     cnts, _ = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # logger.debug(f"Number of contours: {len(cnts)}")
+    logger.debug(f"Number of contours: {len(cnts)}")
 
     # Remove contours that are too small or too elongated (likely lines)
     for c in cnts:
@@ -380,7 +372,8 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
             continue
 
         if area < preprocess_config.MAX_AREA and area > preprocess_config.MIN_AREA:
-            logger.debug(f"Keeping contour at ({x}, {y}) area: {ar}")
+            pass
+            # logger.debug(f"Keeping contour at ({x}, {y}) area: {ar}")
         else:
             # logger.warning(f"Removing contour over limits at ({x}, {y}) area: {ar}")
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1) # Possibly smaller contours (smudges)
@@ -422,65 +415,5 @@ def preprocessImage(input: MatLike) -> MatLike:
     # return skewed
     # return blurred
     # return note
+    # return bg_adjusted
     return result
-
-
-if __name__ == "__main__":
-    logger.info("Testing preprocessing module")
-    base_dir ="Not USED"
-    user = input("Use 'ls' (T or F)?: ")
-    if user.lower() == "f":
-        logger.info("Using os.listdir() to retrieve files")
-        image_path = os.path.join(base_dir, "src", "NCR_samples")
-        files = os.listdir(image_path)  # Get list of files
-        file_names = [f for f in files if f.lower().endswith(".jpg")]
-        joined_files = "\n".join(file_names)
-        logger.debug(f"Files imported:\n{joined_files}")
-        logger.debug(len(file_names))
-    else:
-        logger.info("Using 'ls' command to retrieve files")
-        IMAGE_REGEX = r'[a-zA-Z0-9\-]*.jpg'
-        image_path = "./src/NCR_samples"
-        files = subprocess.check_output(["ls", image_path]).decode("utf-8")  # Convert output to list
-        file_names = re.findall(IMAGE_REGEX, files)#try this code out on linux, idk if this works
-        joined_files = "\n".join(file_names)
-        logger.debug(f"File imported:\n{joined_files}\n")
-
-    images = []
-    for name in file_names:
-        path_finder = os.path.join(image_path, name)
-        #print(os.path.join(image_path, name))
-        if os.path.exists(path_finder):
-            images.append(cv2.imread(path_finder))
-        else:
-            logger.warning(f"{name} not found in NCR_samples... skipping")
-    
-    for i in range(len(file_names)):
-    # for i in range(0, 5):
-        try:
-            logger.debug(f"Processing {file_names[i]}")
-            result = preprocessImage(images[i])
-            if result is None:
-                logger.warning(f"No result generated for {file_names[i]}")
-                raise Exception("No result found")
-            else:
-                cv2.imshow(file_names[i], result)
-                print("Press 'space' to continue to the next image")
-                print("Press 'q' to quit")
-                while True:
-                    key = cv2.waitKey(1) & 0xFF
-                    if key == 32:
-                        break
-                    if key == ord('q'):
-                        print("Quitting...")
-                        exit()
-                    cv2.moveWindow(file_names[i], 0, 0)
-
-                cv2.destroyAllWindows()
-        except Exception as e:
-            logger.error(f"Error: {e}")
-            logger.debug("Return a None value to the main driver...")
-            # return None # Would return when integrated with the main driver
-
-    logger.info("Complete preprocess module")
-    
