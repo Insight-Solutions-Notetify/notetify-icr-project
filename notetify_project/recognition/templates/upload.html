@@ -23,7 +23,7 @@
             <a href="{{ image_url }}" download class="dark:text-blue-800 text-black">Download Upload Image</a>
             <img src="{{ image_url }}" alt="Uploaded Image" class="mx-auto mt-2 max-w-xs border rounded shadow">
             <h4 class="mt-6 text-lg font-medium text-gray-800 dark:text-gray-50">Recognized Text</h4>
-            <p class="mt-2 bg-white p-4 rounded border text-gray-800 shadow">{{ recognized_text }}</p>
+            <p class="mt-2 bg-white p-4 rounded border text-gray-800 shadow">{{ recognized_text | safe }}</p>
             <h4 class="text-lg font-medium text-gray-800 dark:text-gray-50">Processed Image</h4>
             <a href="{{ processed_url }}" download class="dark:text-blue-800 text-black">Download Processed Image</a>
             <img src="{{ processed_url }}" alt="Processed Image" class="mx-auto mt-2 max-w-xs border rounded shadow">
