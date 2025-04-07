@@ -17,7 +17,9 @@ from ml_modules import preprocessImage, segmentImage
 
 # Create your views here.
 model = models.load_model("model/emnist_model.keras")
-model.load_weights("model/emnist_model_loss0.68.weights.h5")
+# model.load_weights("model/CNN_model_StratifiedKFold_1_EMNIST.h5")
+# model = models.load_model("model/CNN_model_StratifiedKFold_1_EMNIST.h5")
+model.load_weights("model/emnist_model.weights.h5")
 
 def upload_image(request):
     if request.method == 'POST' and request.FILES.get('image'):
@@ -28,8 +30,33 @@ def upload_image(request):
     
         # Send to preprocess and segmentation modules
         preprocessed = preprocessImage(uploaded_image)
-        segmented, meta_data = segmentImage(preprocessed)
+        segmented, char_metadata = segmentImage(preprocessed)
 
+        # Process predictions of character images
+        predictions = model.predict(segmented)
+        predicted_text = decode_prediction(predictions)
+
+        # Attach predictions to metadata
+        for i, pred in enumerate(predicted_text):
+            char_metadata[i]['prediction'] = pred
+
+        # Reassmble the sentence using metadata
+        sorted_chars = sorted(char_metadata, key=lambda x: (x['line_idx'], x['word_idx'], x['char_idx']))
+
+        text = ""
+        cur_line, cur_word = -1, -1
+
+        for char in sorted_chars:
+            if char['line_idx'] != cur_line:
+                text += "\n"
+                cur_line = char['line_idx']
+                cur_word = -1
+            if char['word_idx'] != cur_word:
+                text += " "
+                cur_word = char['word_idx']
+            text += char['prediction']
+
+        # Save Preprocessed Image (Remove later)
         success, img_buffer = cv2.imencode(".jpg", preprocessed)
         if not success:
             raise Exception("Failed to encode image")
@@ -37,9 +64,10 @@ def upload_image(request):
         processed_name = f"procsesed-{image_path}"
         default_storage.save(processed_name, image_file)
 
+        # Output only the converted text and no images other than the file export
         image_url = f"{settings.MEDIA_URL}{image.name}"
         processed_url = f"{settings.MEDIA_URL}{processed_name}"
-        predicted_text = meta_data
+        predicted_text = text
         return render(request, 'upload.html', {'image_url':image_url, 'recognized_text':predicted_text, 'processed_url':processed_url})
     
     return render(request, 'upload.html')
@@ -51,9 +79,12 @@ def decode_prediction(predictions):
                       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']
     
     printed_guess = [character_by_index[np.argmax(ix)] for ix in predictions]
+    # printed_guess = [np.argmax(ix) for ix in predictions]
+    # print(printed_guess)
     confidence = [np.max(ix) for ix in predictions]
+
     for ix in range(len(printed_guess)):
-        if confidence <= 0.70:
+        if confidence[ix] <= 0.40:
             printed_guess[ix] = ' '
     
     return printed_guess
