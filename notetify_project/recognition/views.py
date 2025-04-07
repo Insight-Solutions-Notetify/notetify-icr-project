@@ -1,5 +1,4 @@
 import cv2
-import tensorflow as tf
 import numpy as np
 from keras import models
 
@@ -14,8 +13,7 @@ from rest_framework import status, views
 from .serializers import HandwritingImageSerializer
 
 # Import preprocessing and segmentation
-from ml_modules import preprocessImage
-# from ml_modules import segmentate_image, segment_characters
+from ml_modules import preprocessImage, segmentImage
 
 # Create your views here.
 model = models.load_model("model/emnist_model.keras")
@@ -25,13 +23,12 @@ def upload_image(request):
     if request.method == 'POST' and request.FILES.get('image'):
         image = request.FILES["image"]
         image_path = default_storage.save(image.name, image)
-        print(image_path)
+        # print(image_path)
         uploaded_image = cv2.imread(f"media/{image_path}")
     
         # Send to preprocess and segmentation modules
         preprocessed = preprocessImage(uploaded_image)
-        # segmented = segmentateImage(image)
-        # segmented = segment_characters(preprocessed) #TEMP while segementImage is being worked on
+        segmented, meta_data = segmentImage(preprocessed)
 
         success, img_buffer = cv2.imencode(".jpg", preprocessed)
         if not success:
@@ -42,7 +39,7 @@ def upload_image(request):
 
         image_url = f"{settings.MEDIA_URL}{image.name}"
         processed_url = f"{settings.MEDIA_URL}{processed_name}"
-        predicted_text = "Predicted text..."
+        predicted_text = meta_data
         return render(request, 'upload.html', {'image_url':image_url, 'recognized_text':predicted_text, 'processed_url':processed_url})
     
     return render(request, 'upload.html')
