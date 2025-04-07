@@ -11,6 +11,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
 os.chdir(project_root)
 
+from src.modules.preprocessing import preprocessImage
 from src.config.segmentation_config import segmentation_config
 from src.modules.logger import logger, log_execution_time
 
@@ -102,7 +103,7 @@ def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_F
         median_gap = np.median(gaps)
         gap_stat = np.percentile(gaps, 40)
         line_gap_thresh = gap_stat * line_gap_factor
-        logger.warning(f"Threshold line gap: {line_gap_thresh}")
+        # logger.warning(f"Threshold line gap: {line_gap_thresh}")
 
         # Merge line blocks if the gap is smaller than the threshold
         merged_boundaries = []
@@ -138,8 +139,13 @@ def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD
     Segment a line image into individual words based on vertical projection.
     """
     try:
+        
         cv2.imshow("Before Word Seg", line_image)
         cv2.waitKey(0)
+
+        if segmentation_config.MIN_WORD_IMG_HEIGHT > line_image.shape[0]:
+            logger.warning(f"Word to small to obtain image")
+            return []
         flipped = flipImage(line_image)
 
         # Vertical Projection
@@ -171,7 +177,7 @@ def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD
         median_gap = np.median(gaps)
         gap_stat = np.percentile(gaps, 50)
         word_gap_thresh = gap_stat * threshold_factor
-        logger.warning(f"Word Gap Threshold: {word_gap_thresh}")
+        # logger.warning(f"Word Gap Threshold: {word_gap_thresh}")
 
         # Segment words
         words = []
@@ -198,13 +204,15 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
     """
     try:
         flipped = flipImage(word_image)
-
         cv2.imshow("Word", word_image)
         cv2.waitKey(0)
-
+        
         # Find contours of characters
-        cnts, _ = cv2.findContours(flipped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+        cnts = cv2.findContours(flipped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+        if len(cnts) == 0:
+            return []
+        
         # Sort contours from left to right based on x-coord
         cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
 
@@ -212,8 +220,9 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         # Merge overlapping contours in the x-direction
         logger.debug("Merging overlapping contours")
         for i in range(len(cnts) - 1):
+            # logger.warning(f"Index: {i}")
             for j in range(i + 1, len(cnts)):
-                if len(cnts[i]) == 0:
+                if len(cnts[i]) == 0 or len(cnts[j]) == 0:
                     continue
                 x1, y1, w1, h1 = cv2.boundingRect(cnts[i])
                 x2, y2, w2, h2 = cv2.boundingRect(cnts[j])
@@ -242,7 +251,7 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
         return []
-    
+
     return characters_images
 
 @log_execution_time
@@ -303,7 +312,8 @@ def segmentImage(image: MatLike, model=None) -> tuple:
                     })
 
     logger.debug(f"Segmented Data: {segmented_metadata}")
-    return char_images, segmented_metadata
+
+    return segmented_images, segmented_metadata
 
 
 # TESTING ONLY
@@ -395,8 +405,9 @@ def test_line_segmentation(image: str, output_dir: str) -> None:
 
             for char_idx, chars in enumerate(characters):
                 for char in chars:
-                    cv2.imshow("Char", char)
-                    cv2.waitKey(0)
+                    pass
+                    # cv2.imshow("Char", char)
+                    # cv2.waitKey(0)
                 # save_images(chars, os.path.join(output_dir, f"line_{line_idx}_word_{word_idx}_char{char_idx}"), "char")
 
     logger.debug("Line segmentation test complete.")
@@ -442,17 +453,20 @@ if __name__ == "__main__":
         
     for i in range(len(file_names)):
         logger.debug(f"Beginning segmentation on {file_names[i]}")
+        preprocessed = preprocessImage(cv2.imread(f"{image_path}{file_names[i]}"))
+        cv2.imshow("Preprocessed", preprocessed)
+        cv2.waitKey(0)
         # binary = cv2.threshold(images[i], 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-        # segmented_images, segmented_metadata = segmentImage(binary) # Should return a list of dict elements that hold the metadata and image of characters
+        segmented_images, segmented_metadata = segmentImage(preprocessed) # Should return a list of dict elements that hold the metadata and image of characters
 
-        # import json
-        # file_path = f"{output_dir}/{i}image.json"
-        # with open(file_path, 'w') as json_file:
-        #     json.dump(segmented_metadata, json_file)
+        import json
+        file_path = f"{output_dir}/{i}image.json"
+        with open(file_path, 'w') as json_file:
+            json.dump(segmented_metadata, json_file)
 
         # FOR DEVELOPMENT TESTING
         # logger.debug(f"Test segmenting image {file_names[i]}")
-        segmented = test_line_segmentation(file_names[i], output_dir)
+        # segmented = test_line_segmentation(file_names[i], output_dir)
         # segmented = test_word_segmentation(file_names[i], output_dir)
         # segmented = test_character_segmentation(file_names[i], output_dir)
     
