@@ -140,8 +140,8 @@ def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD
     """
     try:
         
-        cv2.imshow("Before Word Seg", line_image)
-        cv2.waitKey(0)
+        # cv2.imshow("Before Word Seg", line_image)
+        # cv2.waitKey(0)
 
         if segmentation_config.MIN_WORD_IMG_HEIGHT > line_image.shape[0]:
             logger.warning(f"Word to small to obtain image")
@@ -204,8 +204,8 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
     """
     try:
         flipped = flipImage(word_image)
-        cv2.imshow("Word", word_image)
-        cv2.waitKey(0)
+        # cv2.imshow("Word", word_image)
+        # cv2.waitKey(0)
         
         # Find contours of characters
         cnts = cv2.findContours(flipped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -454,8 +454,8 @@ if __name__ == "__main__":
     for i in range(len(file_names)):
         logger.debug(f"Beginning segmentation on {file_names[i]}")
         preprocessed = preprocessImage(cv2.imread(f"{image_path}{file_names[i]}"))
-        cv2.imshow("Preprocessed", preprocessed)
-        cv2.waitKey(0)
+        # cv2.imshow("Preprocessed", preprocessed)
+        # cv2.waitKey(0)
         # binary = cv2.threshold(images[i], 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         segmented_images, segmented_metadata = segmentImage(preprocessed) # Should return a list of dict elements that hold the metadata and image of characters
 
