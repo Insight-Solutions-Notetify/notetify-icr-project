@@ -281,6 +281,8 @@ def segmentImage(image: MatLike, model=None) -> tuple:
 
     logger.debug(f"Segmented Data: {segmented_metadata}")
 
+    # Reshape images to fit tensorflow input
+    segmented_images = np.reshape(segmented_images, (len(segmented_images),28, 28, 1))
     return segmented_images, segmented_metadata
 
 # TESTING ONLY
