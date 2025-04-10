@@ -27,7 +27,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -138,6 +137,10 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# Celery
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
 
 # pip install boto3 django-storages
 # Used later for AWS
