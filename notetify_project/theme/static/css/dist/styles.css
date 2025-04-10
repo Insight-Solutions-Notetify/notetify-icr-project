@@ -8,13 +8,12 @@
     --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
+    --color-blue-300: oklch(80.9% 0.105 251.813);
     --color-blue-400: oklch(70.7% 0.165 254.624);
     --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-blue-600: oklch(54.6% 0.245 262.881);
     --color-blue-700: oklch(48.8% 0.243 264.376);
-    --color-blue-800: oklch(42.4% 0.199 265.638);
     --color-gray-50: oklch(98.5% 0.002 247.839);
-    --color-gray-100: oklch(96.7% 0.003 264.542);
     --color-gray-500: oklch(55.1% 0.027 264.364);
     --color-gray-800: oklch(27.8% 0.033 256.848);
     --color-zinc-600: oklch(44.2% 0.017 285.786);
@@ -247,6 +246,9 @@
   .flex {
     display: flex;
   }
+  .hidden {
+    display: none;
+  }
   .inline-block {
     display: inline-block;
   }
@@ -346,6 +348,9 @@
   .text-black {
     color: var(--color-black);
   }
+  .text-blue-600 {
+    color: var(--color-blue-600);
+  }
   .text-gray-800 {
     color: var(--color-gray-800);
   }
@@ -422,18 +427,13 @@
     }
   }
   @media (prefers-color-scheme: dark) {
-    .dark\:text-blue-800 {
-      color: var(--color-blue-800);
+    .dark\:text-blue-300 {
+      color: var(--color-blue-300);
     }
   }
   @media (prefers-color-scheme: dark) {
     .dark\:text-gray-50 {
       color: var(--color-gray-50);
-    }
-  }
-  @media (prefers-color-scheme: dark) {
-    .dark\:text-gray-100 {
-      color: var(--color-gray-100);
     }
   }
   @media (prefers-color-scheme: dark) {
