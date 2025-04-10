@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-xl mx-auto text-center mt-10">
+    <h2 class="text-2xl font-bold text-gray-800 dark:text-white">Image uploaded!</h2>
+    <p class="mt-4 text-gray-700 dark:text-gray-300">Your image is being processed.</p>
+    <p class="mt-2">To view results, copy and paste the link below into your browser:</p>
+    <div class="bg-gray-200 dark:bg-gray-800 p-3 mt-4 rounded">
+        <code class="text-blue-700 dark:text-blue-400">/result/{{ image_id }}/</code>
+    </div>
+</div>
+{% endblock %}

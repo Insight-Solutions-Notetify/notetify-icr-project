@@ -1,46 +1,39 @@
-{% load static tailwind_tags %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Handwriting Recognition</title>
-    {% tailwind_css %}
-</head>
-<body class="bg-white-900 min-h-screen dark:bg-stone-900">
-    <div class="max-w-2xl mx-auto mt-10 px-4">
-        <h2 class="text-2xl font-semibold text-center text-gray-800 dark:text-gray-50">Upload Handwritten Notes</h2>
-        <a href="/" class="mt-10 text-center dark:text-white px-6 py-2 rounded">Return to home page</a>
-        
-        <form id="upload-form" enctype="multipart/form-data" class="text-center mt-6">
-            {% csrf_token %}
-            <input type="file" name="image" id="image-input"
-                   class="block w-full text-sm text-black rounded-xl border outline-dashed border-black dark:border-gray-500 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-700 dark:file:bg-blue-700 file:text-blue-70 dark:file:text-blue-10 hover:file:bg-blue-500 dark:hover:file:bg-zinc-700" 
-                   required>
-            <button type="submit" 
-                    class="mt-4 inline-block bg-blue-600 text-white font-medium px-6 py-2 rounded hover:bg-blue-400 dark:hover:bg-zinc-600 transition">
-                Upload
-            </button>
-        </form>
+{% extends 'base.html' %}
+{% load static %}
 
-        <div id="results" class="mt-10 text-center hidden">
-            <h4 class="mt-6 text-lg font-medium text-gray-800 dark:text-gray-50">Uploaded Image</h4>
-            <img id="preview-image" src="" alt="Uploaded Image" 
-                class="mx-auto mt-2 max-w-xs border rounded shadow">
-            <h4 class="mt-6 text-lg font-medium text-gray-800 dark:text-gray-50">Processing Status</h4>
-            <p id="status" class="text-blue-600 dark:text-blue-300">Uploading...</p>
-            <div id="text-block" class="hidden">
-                <h4 class="mt-6 text-lg font-medium text-gray-800 dark:text-gray-50">Recognized Text</h4>
-                <p id="recognized-text" class="mt-2 bg-white p-4 rounded border text-gray-800 shadow"></p>
-            </div>
-            <div id="processed-block" class="hidden">
-                <h4 class="text-lg font-medium text-gray-800 dark:text-gray-50">Processed Image</h4>
-                <img id="processed-image" src="" alt="Processed Image"
-                     class="mx-auto mt-2 max-w-xs border rounded shadow">
-            </div>
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10 px-4">
+    <h2 class="text-2xl font-semibold text-center text-gray-800 dark:text-gray-50">Upload Handwritten Notes</h2>
+    <a href="/" class="mt-10 text-center dark:text-white px-6 py-2 rounded">Return to home page</a>
+    
+    <form id="upload-form" enctype="multipart/form-data" class="text-center mt-6">
+        {% csrf_token %}
+        <input type="file" name="image" id="image-input"
+                class="block w-full text-sm text-black rounded-xl border outline-dashed border-black dark:border-gray-500 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-700 dark:file:bg-blue-700 file:text-blue-70 dark:file:text-blue-10 hover:file:bg-blue-500 dark:hover:file:bg-zinc-700" 
+                required>
+        <button type="submit" 
+                class="mt-4 inline-block bg-blue-600 text-white font-medium px-6 py-2 rounded hover:bg-blue-400 dark:hover:bg-zinc-600 transition">
+            Upload
+        </button>
+    </form>
+
+    <div id="results" class="mt-10 text-center hidden">
+        <h4 class="mt-6 text-lg font-medium text-gray-800 dark:text-gray-50">Uploaded Image</h4>
+        <img id="preview-image" src="" alt="Uploaded Image" 
+            class="mx-auto mt-2 max-w-xs border rounded shadow">
+        <h4 class="mt-6 text-lg font-medium text-gray-800 dark:text-gray-50">Processing Status</h4>
+        <p id="status" class="text-blue-600 dark:text-blue-300">Uploading...</p>
+        <div id="text-block" class="hidden">
+            <h4 class="mt-6 text-lg font-medium text-gray-800 dark:text-gray-50">Recognized Text</h4>
+            <p id="recognized-text" class="mt-2 bg-white p-4 rounded border text-gray-800 shadow"></p>
+        </div>
+        <div id="processed-block" class="hidden">
+            <h4 class="text-lg font-medium text-gray-800 dark:text-gray-50">Processed Image</h4>
+            <img id="processed-image" src="" alt="Processed Image"
+                    class="mx-auto mt-2 max-w-xs border rounded shadow">
         </div>
     </div>
+</div>
 
-    <script src="{% static 'uploading_status.js' %}"></script>
-</body>
-</html>
+<script src="{% static 'uploading_status.js' %}"></script>
+{% endblock %}
