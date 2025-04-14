@@ -160,10 +160,10 @@ def show_images(images, title_texts):
 def sample_emnist(dataset = None):
     images_2_show = []
     titles_2_show = []
-    # for i in range(0, 9):
-    #     r = random.randint(1, 10000)
-    #     images_2_show.append(dataset[0][r])
-    #     titles_2_show.append('training image [' + str(r) + '] = ' + character_by_index[dataset[1][r]])    
+    for i in range(0, 9):
+        r = random.randint(1, 10000)
+        images_2_show.append(dataset[0][r])
+        titles_2_show.append('training image [' + str(r) + '] = ' + character_by_index[dataset[1][r]])    
 
     for i in range(0, 3):
         r = random.randint(1, 10000)
