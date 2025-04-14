@@ -153,11 +153,13 @@ def blurImage(input: MatLike, sigma=preprocess_config.GAUSSIAN_SIGMA) -> MatLike
 
 def rescaleImage(input: MatLike) -> MatLike:
     ''' Rescale images down to a standard acceptable for input '''
-    logger.debug(f"Rescaling image to a maximum size of {preprocess_config.IMG_WIDTH}")
+    logger.debug(f"Minimzing image to a maximum size of {preprocess_config.IMG_WIDTH}")
 
-    img_width, img_height, _  = input.shape
+    img_height, img_width, _  = input.shape
+    # logger.warning(f"Image shape {input.shape}")
     IMG_RATIO = img_width / img_height
-    result = cv2.resize(input,(preprocess_config.IMG_WIDTH, int(preprocess_config.IMG_WIDTH * IMG_RATIO))) #, fx=IMG_RATIO, fy=IMG_RATIO)
+    min_width = min(img_width, preprocess_config.IMG_WIDTH)
+    result = cv2.resize(input, (min_width, int(min_width / IMG_RATIO))) #, fx=IMG_RATIO, fy=IMG_RATIO)
 
     logger.debug(f"Original Shape: {input.shape}, Resized Shape: {result.shape}\n")  
     return result
