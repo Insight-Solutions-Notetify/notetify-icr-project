@@ -46,7 +46,7 @@ class PreprocessConfig:
     MAX_AR = 10
     MAX_AREA = 2000.0
     MIN_AREA = 29.0
-    MAX_HEIGHT = 0.7
+    MAX_HEIGHT = 0.9
     
 
 preprocess_config = PreprocessConfig()
