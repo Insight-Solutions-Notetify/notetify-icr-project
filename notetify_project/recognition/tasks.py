@@ -56,11 +56,11 @@ def process_upload_image(image_id):
 def decode_prediction(predictions):
     character_by_index = list("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")
     printed_guess = [character_by_index[np.argmax(ix)] for ix in predictions]
-    print(printed_guess)
     confidence = [np.max(ix) for ix in predictions]
 
     for ix in range(len(printed_guess)):
         if confidence[ix] <= 0.70:
-            printed_guess[ix] = ' '
+            printed_guess[ix] = '_'
     
+    print(printed_guess)
     return printed_guess
