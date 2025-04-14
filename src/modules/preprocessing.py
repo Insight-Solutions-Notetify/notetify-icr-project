@@ -18,7 +18,6 @@ os.chdir(project_root)
 
 from src.config.preprocess_config import preprocess_config
 from src.modules.logger import logger, log_execution_time
-from src.config.configure import base_dir
 
 ### PREPROCESS MODULE ###
 
@@ -173,8 +172,8 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
         score = np.sum((histogram[1:] - histogram[:-1]) ** 2, dtype=float)
         return histogram, score
 
-    gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
-    flipped = flipImage(gray)
+    # gray = cv2.cvtColor(input, cv2.COLOR_BGR2GRAY)
+    flipped = flipImage(input) # Image already gray in NEW method
     thresh = getThreshold(flipped)
 
     scores = []
