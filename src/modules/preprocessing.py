@@ -311,11 +311,24 @@ def findColorRange(input: MatLike, k = 2) -> Set:
     return text_range, bg_range
 
 @log_execution_time
-def highlightText(input: MatLike, text_range: list) -> MatLike:
+def highlightText(input: MatLike, text_range: list,
+                  MIN_RANGE=preprocess_config.MIN_RANGE,
+                  MAX_RANGE=preprocess_config.MAX_RANGE,
+                  LOWER_RANGE=preprocess_config.LOWER_RANGE,
+                  UPPER_RANGE=preprocess_config.UPPER_RANGE,
+                  LINE_KERN=preprocess_config.HORIZONTAL_KERNEL,
+                  LINE_ITER=preprocess_config.HORIZONTAL_ITER,
+                  KERN_RATIO=preprocess_config.KERNEL_RATIO,
+                  DILATE_ITER=preprocess_config.HIGH_DILATE_ITER,
+                  MAX_HEIGHT=preprocess_config.MAX_HEIGHT,
+                  MAX_AR=preprocess_config.MAX_AR,
+                  MAX_AREA=preprocess_config.MAX_AREA,
+                  MIN_AREA=preprocess_config.MIN_AREA,
+                  ) -> MatLike:
     ''' Highlights text-only regions, excluding everything else (outputting a binary image of text and non-text) '''
     logger.debug("Highlighting text")
     
-    text_range = [max(0, text_range[0] + preprocess_config.MIN_RANGE), min(255, text_range[1] + preprocess_config.MAX_RANGE)]
+    text_range = [max(0, text_range[0] + MIN_RANGE), min(255, text_range[1] + MAX_RANGE)]
     logger.debug(f"Text Range: {text_range}")
     text_region = np.array([[[text_range[0], text_range[0], text_range[0]], 
                               [text_range[1], text_range[1], text_range[1]]]]).astype(np.uint8)
@@ -331,10 +344,10 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
         return input
 
     # Ensure range only considers value, not hue/saturation
-    hsv_text_range[0][0][0] = preprocess_config.LOWER_RANGE
-    hsv_text_range[0][0][1] = preprocess_config.LOWER_RANGE
-    hsv_text_range[0][1][0] = preprocess_config.UPPER_RANGE
-    hsv_text_range[0][1][1] = preprocess_config.UPPER_RANGE
+    hsv_text_range[0][0][0] = LOWER_RANGE
+    hsv_text_range[0][0][1] = LOWER_RANGE
+    hsv_text_range[0][1][0] = UPPER_RANGE
+    hsv_text_range[0][1][1] = UPPER_RANGE
 
     logger.debug(f"HSV Range: {hsv_text_range[0][0]} - {hsv_text_range[0][1]}")
 
@@ -347,8 +360,8 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     mask = cv2.medianBlur(original_mask, 3)
     
     # Detect horizontal lines
-    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.HORIZONTAL_KERNEL)
-    detected_lines = cv2.morphologyEx(mask, cv2.MORPH_OPEN, horizontal_kernel, iterations=preprocess_config.HORIZONTAL_ITER)
+    horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, LINE_KERN)
+    detected_lines = cv2.morphologyEx(mask, cv2.MORPH_OPEN, horizontal_kernel, iterations=LINE_ITER)
 
     # Subtract detected lines from mask
     mask_no_lines = cv2.subtract(mask, detected_lines)
@@ -357,8 +370,8 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     inpainted = cv2.inpaint(mask_no_lines, detected_lines, inpaintRadius=2, flags=cv2.INPAINT_TELEA)
 
     # Dilate the image
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
-    dilate = cv2.dilate(inpainted, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, KERN_RATIO)
+    dilate = cv2.dilate(inpainted, kernel, iterations=DILATE_ITER)
 
     # Detect contours after lines removed
     cnts, _ = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -376,12 +389,12 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
         - There height is less than MAX_CNT_HEIGHT (h < MAX_CNT_HEIGHT)
         - There aspect ratio is lower than MAX_AR (ar < AR)'''
 
-        if h > scr_h * preprocess_config.MAX_HEIGHT or ar > preprocess_config.MAX_AR:
+        if h > scr_h * MAX_HEIGHT or ar > MAX_AR:
             # logger.warning(f"Remvoing contour at ({x}, {y}) with height: {h} and ar: {ar}")
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
             continue
 
-        if area < preprocess_config.MAX_AREA and area > preprocess_config.MIN_AREA:
+        if area < MAX_AREA and area > MIN_AREA:
             pass
             # logger.debug(f"Keeping contour at ({x}, {y}) area: {area}")
         else:
