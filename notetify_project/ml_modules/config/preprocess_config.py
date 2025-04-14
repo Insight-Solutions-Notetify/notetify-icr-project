@@ -1,5 +1,3 @@
-import numpy as np
-
 class PreprocessConfig:
 
     # Image Adjustment
@@ -7,8 +5,8 @@ class PreprocessConfig:
     CONTRAST = 1
 
     # Skewing Adjustments
-    ANGLE_DELTA = 1
-    ANGLE_LIMIT = 45 
+    ANGLE_DELTA = 0.1
+    ANGLE_LIMIT = 25 
 
     # Image Rescaling Parameters
     IMG_WIDTH = 800
@@ -18,7 +16,7 @@ class PreprocessConfig:
     DILATE_ITER = 2
     ERODE_ITER = 9
 
-    MIN_COUNTOUR_FACTOR = 0.5
+    MIN_COUNTOUR_FACTOR = 0.35
     MAX_COUNTOUR_FACTOR = 0.9
     VALID_RATIO = 0.5
 
@@ -41,14 +39,14 @@ class PreprocessConfig:
 
     # NEED to change this variable names for highlightText
     # Horizontal projection for text lines
-    HORIZONTAL_KERNEL = (20, 1)
-    HORIZONTAL_ITER = 1
+    HORIZONTAL_KERNEL = (10, 1)
+    HORIZONTAL_ITER = 2
     KERNEL_RATIO = (1, 3)
     HIGH_DILATE_ITER = 1
     MAX_AR = 10
     MAX_AREA = 2000.0
-    MIN_AREA = 20.0
-    MAX_HEIGHT = 100
+    MIN_AREA = 29.0
+    MAX_HEIGHT = 0.9
     
 
 preprocess_config = PreprocessConfig()
