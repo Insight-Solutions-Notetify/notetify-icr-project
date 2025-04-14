@@ -188,55 +188,62 @@ def correctSkew(input: MatLike, delta=preprocess_config.ANGLE_DELTA, limit=prepr
     (h, w) = input.shape[:2]
     center = (w // 2, h // 2)
     M = cv2.getRotationMatrix2D(center, best_angle, 1.0)
-    corrected = cv2.warpAffine(input, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT)
+    corrected = cv2.warpAffine(flipped, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT)
     logger.debug(f"Best Angle: {best_angle}")
     logger.debug(f"Complete correctSkew()\n")
-    return corrected
+    return flipImage(corrected)
 
 @log_execution_time
 def highlightBoundary(input: MatLike,
-                      kernel=preprocess_config.BOUND_KERNEL,
-                      dilated=preprocess_config.DILATE_ITER,
-                      eroded=preprocess_config.ERODE_ITER,
+                      kernel_shape=preprocess_config.BOUND_KERNEL,
+                      dilated_iter=preprocess_config.DILATE_ITER,
+                      eroded_iter=preprocess_config.ERODE_ITER,
                       min_fac=preprocess_config.MIN_COUNTOUR_FACTOR,
                       max_fac=preprocess_config.MAX_COUNTOUR_FACTOR,
                       valid_ratio=preprocess_config.VALID_RATIO) -> MatLike:
     ''' Removes any background apart from the medium where the text is located '''
     logger.debug("Highlighting the boundary of the note image")
 
-    gray = BGRToGRAY(input)
-    thresh = getThreshold(gray)
+    # gray = BGRToGRAY(input)
+    thresh = getThreshold(input)
 
     # New method overwriting the previous one
     edges = cv2.Canny(thresh, 50, 150)
     cnts = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     # Apply morphological operations to clean up image
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel)
-    dilated = cv2.dilate(thresh, kernel, iterations=dilated)
-    eroded = cv2.erode(dilated, kernel, iterations=eroded)
-    
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_shape)
+    dilated = cv2.dilate(thresh, kernel, iterations=dilated_iter)
+    eroded = cv2.erode(dilated, kernel, iterations=eroded_iter)
+    cv2.imshow("Eroded", eroded)
+
     # Find contours of the eroded image
     cnts = cv2.findContours(eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
     if len(cnts) == 0:
+        logger.warning("No contours could be generated")
         return input
     
     # Draw contours to verify that the correct region is being selected
     # cv2.drawContours(reversed, cnts, -1, (0, 255, 0), 2)
     # return reversed
 
+    min_area = min_fac * input.shape[0] * input.shape[1]
+    max_area = max_fac * input.shape[0] * input.shape[1]
+    logger.debug(f"min_area: {min_area}, max_area: {max_area}, valid_ratio: {valid_ratio}")
     valid_counters = []
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         area = cv2.contourArea(c)
         aspect_ratio = w / float(h)
         
-        min_area = min_fac * input.shape[0] * input.shape[1]
-        max_area = max_fac * input.shape[0] * input.shape[1]
         if area > min_area and area < max_area and valid_ratio < aspect_ratio:
+            logger.debug(f"Keeping countor with at {x}, {y}, with an area of {area}")
             valid_counters.append(c)
+        else:
+            logger.warning(f"Removing contour at {x}, {y}, with area: {area}, and ar: {aspect_ratio}")
+        
         
     if valid_counters:
         x_min = min([cv2.boundingRect(c)[0] for c in valid_counters])
