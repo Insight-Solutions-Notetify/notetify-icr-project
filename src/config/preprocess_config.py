@@ -39,14 +39,14 @@ class PreprocessConfig:
 
     # NEED to change this variable names for highlightText
     # Horizontal projection for text lines
-    HORIZONTAL_KERNEL = (20, 1)
-    HORIZONTAL_ITER = 1
+    HORIZONTAL_KERNEL = (10, 1)
+    HORIZONTAL_ITER = 2
     KERNEL_RATIO = (1, 3)
     HIGH_DILATE_ITER = 1
     MAX_AR = 10
     MAX_AREA = 2000.0
-    MIN_AREA = 20.0
-    MAX_HEIGHT = 100
+    MIN_AREA = 29.0
+    MAX_HEIGHT = 0.7
     
 
 preprocess_config = PreprocessConfig()
