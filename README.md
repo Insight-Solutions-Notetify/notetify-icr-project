@@ -23,6 +23,15 @@ Make sure you are inside the django project folder ./notetify_project
 
 ```python manage.py runserver```
 
+
+# Celery task in the background
+Make sure you have redis-server running on your device/server.
+Either redis-server for windows or on WSL.
+
+Run celery task worker with command
+
+```celery -A notetify_project worker --loglevel=info -P gevent```
+
 # Edit tailwind css
 Run these two commands together to see the changes updated
 
