@@ -215,7 +215,6 @@ def highlightBoundary(input: MatLike,
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_shape)
     dilated = cv2.dilate(thresh, kernel, iterations=dilated_iter)
     eroded = cv2.erode(dilated, kernel, iterations=eroded_iter)
-    cv2.imshow("Eroded", eroded)
 
     # Find contours of the eroded image
     cnts = cv2.findContours(eroded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -263,12 +262,10 @@ def highlightBoundary(input: MatLike,
 def findColorRange(input: MatLike, k = 2) -> Set:
     ''' Identify the color range for text and background by using k-clustering '''
     logger.debug("Finding text color range")
-    flip = flipImage(input)
-    image = BGRToRGB(flip)
-    pixels = image.reshape(-1, 3)
+    # flip = flipImage(input)
+    pixels = input.reshape(-1, 1).astype(np.float32)
 
     #K-Means Clustering
-    pixels = np.float32(pixels)
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 110, 0.2)
     _, labels, center = cv2.kmeans(pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS)
     
@@ -282,15 +279,15 @@ def findColorRange(input: MatLike, k = 2) -> Set:
 
     # Assign pixels to their clusters
     for pixel, label in zip(pixels, labels.flatten()):
-        cluster_pixels[label].append(pixel)
+        cluster_pixels[label].append(pixel[0])
 
     # Assign pixels to their clusters
     color_ranges = {}
     for label in dominant_labels:
         cluster_array = np.array(cluster_pixels[label], dtype=np.uint8)
-        min_color = np.min(cluster_array, axis=0)
-        max_color = np.max(cluster_array, axis=0)
-        color_ranges[label] = (min_color.tolist(), max_color.tolist())
+        min_gray = int(np.min(cluster_array))
+        max_gray = int(np.max(cluster_array))
+        color_ranges[label] = (min_gray, max_gray)
 
     #Identify background as the most frequent cluster
     background_label = dominant_labels[0]
@@ -298,17 +295,17 @@ def findColorRange(input: MatLike, k = 2) -> Set:
 
     bg_range = color_ranges[background_label]
     text_range = color_ranges[text_label]
-    logger.debug(f"Background Color range (BGR): {bg_range}")
-    logger.debug(f"Text Color range (BGR): {text_range}")
+    # logger.debug(f"Background Color range (BGR): {bg_range}")
+    # logger.debug(f"Text Color range (BGR): {text_range}")
 
-    # Convert this RGB range to GRAY range
-    text_range = [max(0, int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2])), 
-                  min(255, int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2]))] # Add offset to handle boundary case values
-    bg_range = [max(0, int(0.114 * bg_range[0][0] + 0.587 * bg_range[0][1] + 0.299 * bg_range[0][2])),
-                min(255, int(0.114 * bg_range[1][0] + 0.587 * bg_range[1][1] + 0.299 * bg_range[1][2]))]
+    # # Convert this RGB range to GRAY range
+    # text_range = [max(0, int(0.114 * text_range[0][0] + 0.587 * text_range[0][1] + 0.299 * text_range[0][2])), 
+    #               min(255, int(0.114 * text_range[1][0] + 0.587 * text_range[1][1] + 0.299 * text_range[1][2]))] # Add offset to handle boundary case values
+    # bg_range = [max(0, int(0.114 * bg_range[0][0] + 0.587 * bg_range[0][1] + 0.299 * bg_range[0][2])),
+    #             min(255, int(0.114 * bg_range[1][0] + 0.587 * bg_range[1][1] + 0.299 * bg_range[1][2]))]
 
     logger.debug(f"Text Color range (GRAY): {text_range}")
-    logger.warning(f"Background Color range (GRAY): {bg_range}")
+    logger.debug(f"Background Color range (GRAY): {bg_range}")
     return text_range, bg_range
 
 @log_execution_time
@@ -323,9 +320,9 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     
     try:
         hsv_text_range = BGRToHSV(text_region)
-        shaded = BGRToShades(input)
-        flip = flipImage(shaded)
-        reverted = GRAYToBGR(flip)
+        # shaded = BGRToShades(input)
+        # flip = flipImage(shaded)
+        reverted = GRAYToBGR(input)
         hsv = BGRToHSV(reverted)
     except cv2.error as e:
         logger.error(f"Error: {e}")
@@ -340,28 +337,33 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
     logger.debug(f"HSV Range: {hsv_text_range[0][0]} - {hsv_text_range[0][1]}")
 
     original_mask= cv2.inRange(hsv, hsv_text_range[0][0], hsv_text_range[0][1])
-    # cv2.imshow("Original Mask", original_mask)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    eroded = cv2.erode(original_mask, kernel, iterations=1)
+
     # Apply noise reduction before dilation
     mask = cv2.medianBlur(original_mask, 3)
     
-    # ** Step 1: Detect and Remove Horizontal Lines **
+    # Detect horizontal lines
     horizontal_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.HORIZONTAL_KERNEL)
     detected_lines = cv2.morphologyEx(mask, cv2.MORPH_OPEN, horizontal_kernel, iterations=preprocess_config.HORIZONTAL_ITER)
 
     # Subtract detected lines from mask
     mask_no_lines = cv2.subtract(mask, detected_lines)
 
-    # ** Step 2: Fill Missing Spaces (Interpolation) **
+    # Interpolate missing space
     inpainted = cv2.inpaint(mask_no_lines, detected_lines, inpaintRadius=2, flags=cv2.INPAINT_TELEA)
 
-    # ** Step 3: Dilation and Contour Detection **
+    # Dilate the image
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, preprocess_config.KERNEL_RATIO)
     dilate = cv2.dilate(inpainted, kernel, iterations=preprocess_config.HIGH_DILATE_ITER)
 
+    # Detect contours after lines removed
     cnts, _ = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     logger.debug(f"Number of contours: {len(cnts)}")
 
     # Remove contours that are too small or too elongated (likely lines)
+    scr_h = dilate.shape[0]
     for c in cnts:
         x, y, w, h = cv2.boundingRect(c)
         ar = w / float(h)
@@ -369,24 +371,23 @@ def highlightText(input: MatLike, text_range: list) -> MatLike:
         
         ''' Contours are valid if they follow these conditions
         - There area is greater than MIN_AREA (area > MIN_AREA)
-
         - There height is less than MAX_CNT_HEIGHT (h < MAX_CNT_HEIGHT)
         - There aspect ratio is lower than MAX_AR (ar < AR)'''
 
-        if h > preprocess_config.MAX_HEIGHT or ar > preprocess_config.MAX_AR:
+        if h > scr_h * preprocess_config.MAX_HEIGHT or ar > preprocess_config.MAX_AR:
             # logger.warning(f"Remvoing contour at ({x}, {y}) with height: {h} and ar: {ar}")
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1)
             continue
 
         if area < preprocess_config.MAX_AREA and area > preprocess_config.MIN_AREA:
             pass
-            # logger.debug(f"Keeping contour at ({x}, {y}) area: {ar}")
+            # logger.debug(f"Keeping contour at ({x}, {y}) area: {area}")
         else:
-            # logger.warning(f"Removing contour over limits at ({x}, {y}) area: {ar}")
+            # logger.warning(f"Removing contour over limits at ({x}, {y}) area: {area}")
             cv2.drawContours(dilate, [c], -1, (0, 0, 0), -1) # Possibly smaller contours (smudges)
 
     logger.debug("Resulting highlighting complete")
-    return blurImage(cv2.bitwise_and(dilate, original_mask), 0.2)
+    return blurImage(cv2.bitwise_and(dilate, eroded), 0.2)
 
 @log_execution_time
 def preprocessImage(input: MatLike) -> MatLike:
@@ -394,15 +395,17 @@ def preprocessImage(input: MatLike) -> MatLike:
     logger.debug("Starting preprocess process")
     try:
         # Apply filters to image
-        text_range, bg_range = findColorRange(input)
+        scaled = rescaleImage(input)
 
-        weighted = contrastImage(input, bg_range)
+        # Simplify from BGR to gray
+        grayed = BGRToGRAY(scaled)
 
-        scaled = rescaleImage(weighted)
+        skewed = correctSkew(grayed)
 
-        skewed = correctSkew(scaled)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        weighted = clahe.apply(skewed)
 
-        blurred = blurImage(skewed)
+        blurred = blurImage(weighted)
 
         note = highlightBoundary(blurred)
 
@@ -411,14 +414,23 @@ def preprocessImage(input: MatLike) -> MatLike:
 
         # Exclude everything else except the actual text that make up the note
         result = highlightText(note, text_range)
+
+        # result = result.astype("float32") / 255.0
+
+        # new = result
+        # # cv2.imshow("Before boundary cropping", blurred)
+        # cv2.imshow("New process", new)
+        # cv2.waitKey(0)
+        # return scaled
+    
         logger.debug("Complete preprocessing process\n")
 
     except Exception as e:
         logger.error(f"Error: {e}")
         return None
     
-    # return weighted
     # return scaled
+    # return weighted
     # return skewed
     # return blurred
     # return note
