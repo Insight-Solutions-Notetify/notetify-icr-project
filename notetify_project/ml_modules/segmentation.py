@@ -210,12 +210,15 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
             if area < word_image.shape[0] * HEIGHT_INF:
                 continue
             char_resized = cv2.resize(add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1), segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
-            characters_images.append(char_resized)
+            characters_images.append(char_resized.astype(np.float32) / 255.0)
         
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
         return []
 
+    # for char in characters_images:
+    #     cv2.imshow("char", char)
+    #     cv2.waitKey(0)
     return characters_images
 
 @log_execution_time
@@ -231,10 +234,14 @@ def segmentImage(image: MatLike) -> tuple:
 
     # Word Segmentation
     for line_idx, line_img in enumerate(line_images):
+        # cv2.imshow("Line", line_img)
+        # cv2.waitKey(0)
         word_images = segment_words(line_img)
 
         # Character Segmentation
         for word_idx, word_img in enumerate(word_images):
+            # cv2.imshow("Word", word_img)
+            # cv2.waitKey(0)
             char_images = segment_characters(word_img)
 
             # Text Hierarchy Preserving
@@ -254,10 +261,6 @@ def segmentImage(image: MatLike) -> tuple:
 
     # Reshape images to fit tensorflow input
     segmented_images = np.reshape(segmented_images, (len(segmented_images),28, 28, 1))
-
-    # for img in segmented_images:
-    #     cv2.imshow("Char", img)
-    #     cv2.waitKey(0)
     return segmented_images, segmented_metadata
 
 # TESTING ONLY
@@ -396,8 +399,8 @@ if __name__ == "__main__":
             logger.warning(f"{name} not found in NCR_samples... skipping")
         
     for i in range(len(file_names)):
-        logger.debug(f"Beginning segmentation on {file_names[i]}")
         preprocessed = preprocessImage(cv2.imread(f"{image_path}{file_names[i]}"))
+        logger.debug(f"Beginning segmentation on {file_names[i]}")
         # cv2.imshow("Preprocessed", preprocessed)
         # cv2.waitKey(0)
         # binary = cv2.threshold(images[i], 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]

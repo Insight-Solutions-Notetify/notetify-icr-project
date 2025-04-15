@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10 px-4 text-center">
+    <a href="/" class="mt-4 inline-block bg-blue-600 text-white font-medium px-6 py-2 rounded hover:bg-blue-700 transition">Return to homepage</a>
+    {% if image.processed %}
+        <h2 class="mt-10 text-2xl font-semibold text-gray-800 dark:text-white">Processed Result</h2>
+        <p class="mt-4 text-gray-700 dark:text-gray-300">Recognized Text:</p>
+        <div class="bg-white dark:bg-stone-800 p-4 mt-2 rounded shadow text-gray-900 dark:text-white">
+            {{ image.recognized_text|safe }}
+        </div>
+        <h4 class="mt-6 text-lg font-medium text-gray-800 dark:text-gray-50">Processed Image</h4>
+        <img src="{{ image.processed_image.url }}" alt="Processed Image" class="mx-auto mt-2 max-w-xs border rounded shadow">
+    {% else %}
+        <p class="text-yellow-600 dark:text-yellow-300">⏳ Processing not complete yet. Please check back soon.</p>
+    {% endif %}
+</div>
+{% endblock %}

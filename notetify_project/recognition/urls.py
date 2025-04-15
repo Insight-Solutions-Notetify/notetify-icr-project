@@ -1,9 +1,13 @@
 from django.urls import path
-from .views import HandwritingRecognitionView, upload_image
+from .views import UploadImageView, ImageStatusView, upload_page, upload_image, result_view
 
 urlpatterns = [
-    path('recognize/', HandwritingRecognitionView.as_view(), name='recognize'),
-    path('upload/', upload_image, name='upload_image'),
-]
+    # Separated and modularized methods (NEW)
+    path('only_upload/', upload_image, name='upload_image'),
+    path('result/<uuid:image_id>/', result_view, name='result_view'),
 
-#  curl -X POST -F "image=@src/NCR_samples/top-flash-sample-2.jpg" http://127.0.0.1:8000/api/recognize/ # Usage for CURL to website
+    # Old methods
+    path('upload/', upload_page, name='upload_page'),
+    path('api/upload/', UploadImageView.as_view(), name='upload_image'),
+    path('api/status/<uuid:task_id>/', ImageStatusView.as_view(), name='image_status'),
+]
