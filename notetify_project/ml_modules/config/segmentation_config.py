@@ -14,8 +14,7 @@ class SegmentationConfig:
     MIN_WORD_IMG_HEIGHT = 30
     
     # Character Segmentation
-    MERGING_MIN_X = 3
-    MERGING_MIN_Y = 10
+    PROXIMITY_THRESHOLD=15
 
     MINIMUM_SPLIT_WIDTH = 1.6 # Ignore splitting if average width goes below this value
     HEIGHT_INFLUENCE = 0.25
