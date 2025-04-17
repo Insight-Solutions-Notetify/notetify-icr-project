@@ -35,7 +35,10 @@ def add_padding(img: MatLike, padding, axis=0):
     return np.concatenate([pad_block, img, pad_block], axis=axis)
 
 @log_execution_time
-def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_FACTOR, text_thresh=segmentation_config.TEXT_LINE_THRESHOLD, line_padding=segmentation_config.HEIGHT_CHAR_BUFFER) -> list:
+def segment_lines(image: MatLike, 
+                  line_gap_factor=segmentation_config.LINE_GAP_FACTOR, 
+                  text_thresh=segmentation_config.TEXT_LINE_THRESHOLD, 
+                  line_padding=segmentation_config.HEIGHT_CHAR_BUFFER) -> list:
     """
     Segment lines fro ma binary image using horizontal projection and dynamic gap thresholding
     """
@@ -101,7 +104,9 @@ def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_F
         return []
     
 @log_execution_time
-def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD_GAP_FACTOR, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
+def segment_words(line_image: MatLike, 
+                  threshold_factor=segmentation_config.WORD_GAP_FACTOR, 
+                  WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
     """
     Segment a line image into individual words based on vertical projection.
     """
