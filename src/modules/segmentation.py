@@ -35,7 +35,10 @@ def add_padding(img: MatLike, padding, axis=0):
     return np.concatenate([pad_block, img, pad_block], axis=axis)
 
 @log_execution_time
-def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_FACTOR, text_thresh=segmentation_config.TEXT_LINE_THRESHOLD, line_padding=segmentation_config.HEIGHT_CHAR_BUFFER) -> list:
+def segment_lines(image: MatLike, 
+                  line_gap_factor=segmentation_config.LINE_GAP_FACTOR, 
+                  text_thresh=segmentation_config.TEXT_LINE_THRESHOLD, 
+                  line_padding=segmentation_config.HEIGHT_CHAR_BUFFER) -> list:
     """
     Segment lines fro ma binary image using horizontal projection and dynamic gap thresholding
     """
@@ -101,7 +104,9 @@ def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_F
         return []
     
 @log_execution_time
-def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD_GAP_FACTOR, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
+def segment_words(line_image: MatLike, 
+                  threshold_factor=segmentation_config.WORD_GAP_FACTOR, 
+                  WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
     """
     Segment a line image into individual words based on vertical projection.
     """
@@ -163,44 +168,49 @@ def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD
         return []
 
 @log_execution_time
-def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CHAR_SIZE, MERGE_MIN_X=segmentation_config.MERGING_MIN_X, MERGE_MIN_Y=segmentation_config.MERGING_MIN_Y, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER, HEIGHT_INF=segmentation_config.HEIGHT_INFLUENCE) -> list:
+def segment_characters(word_image: MatLike, 
+                       WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER, 
+                       HEIGHT_INF=segmentation_config.HEIGHT_INFLUENCE,
+                       proximity_thresh=segmentation_config.PROXIMITY_THRESHOLD) -> list:
     """
     Segment a word image into individual characters using contour detection.
     """
     try:
-        # cv2.imshow("Word", word_image)
-        # cv2.waitKey(0)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        dilated = cv2.dilate(word_image, kernel, iterations=1)
         
         # Find contours of characters
-        cnts = cv2.findContours(word_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = cnts[0] if len(cnts) == 2 else cnts[1]
         if len(cnts) == 0:
             return []
         
-        # Sort contours from left to right based on x-coord
-        cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
-
         logger.debug(f"Detected {len(cnts)} contours.")
-        # Merge overlapping contours in the x-direction
-        logger.debug("Merging overlapping contours")
-        for i in range(len(cnts) - 1):
-            # logger.warning(f"Index: {i}")
-            for j in range(i + 1, len(cnts)):
-                if len(cnts[i]) == 0 or len(cnts[j]) == 0:
-                    continue
-                x1, y1, w1, h1 = cv2.boundingRect(cnts[i])
-                x2, y2, w2, h2 = cv2.boundingRect(cnts[j])
-                if x2 - (x1 + w1) < MERGE_MIN_X:
-                    if y2 - (y1 + h1) < MERGE_MIN_Y:
-                        if w1 + w2 > char_size[0]:
-                            cnts[i] = np.concatenate((cnts[i], cnts[j]))
-                            cnts[j] = np.array([])
-        
-        # Remove empty contours
-        cnts = [c for c in cnts if len(c) > 0]
-        logger.debug(f"Detected {len(cnts)} contours after merging.")
+        boxes = [cv2.boundingRect(c) for c in cnts]
+        merged = []
+        used = [False] * len(cnts)
 
-        cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
+        for i in range(len(cnts)):
+            if used[i]:
+                continue
+            x, y, w, h = boxes[i]
+            current = [i]
+            used[i] = True
+
+            for j in range(i + 1, len(cnts)):
+                if used[j]:
+                    continue
+                x2, y2, w2, h2 = boxes[j]
+                if abs((x + w / 2) -  (x2 + w2 / 2)) < proximity_thresh and abs((y + h / 2) - (y2 + h2 / 2)) < proximity_thresh:
+                    current.append(j)
+                    used[j] = True
+
+            merged_pts = np.vstack([cnts[k] for k in current])
+            merged.append(cv2.convexHull(merged_pts))
+ 
+        logger.debug(f"Detected {len(merged)} contours after merging.")
+
+        cnts = sorted(merged, key=lambda ctr: cv2.boundingRect(ctr)[0])
         characters_images = []
         for i, c in enumerate(cnts):
             x, y, w, h = cv2.boundingRect(c)
