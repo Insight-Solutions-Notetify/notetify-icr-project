@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import main, about, contact, files, settings, logout
+from .views import main, about, contact, files, settings
 
 urlpatterns = [
     path('', main, name='main'),
@@ -9,5 +9,4 @@ urlpatterns = [
     # Move this logged in apps into different location later meantime here.
     path('files', files, name='files'),
     path('settings', settings, name='settings'),
-    path('logout', logout, name='logout'),
 ]
