@@ -15,3 +15,12 @@ def register(request):
 
 def login(request):
     return render(request, 'temp-sign-acc.html')
+
+def files(request):
+    return render(request, 'temp-files.html')
+
+def settings(request):
+    return render(request, 'temp-settings.html')
+
+def logout(request):
+    return render(request, 'temp-logout.html')
