@@ -9,3 +9,9 @@ def about(request):
 
 def contact(request):
     return render(request, 'contact.html')
+
+def register(request):
+    return render(request, 'temp-create-acc.html')
+
+def login(request):
+    return render(request, 'temp-sign-acc.html')
