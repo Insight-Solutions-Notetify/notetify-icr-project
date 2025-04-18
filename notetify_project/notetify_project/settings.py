@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'recognition',
     'default',
+    'authentication',
 
     # Tailwind CSS
     'tailwind',
