@@ -11,33 +11,26 @@
 
 	<body class="bg-white-900 min-h-screen dark:bg-stone-900 leading-normal tracking-normal">
 		<!-- Navbar -->
-	    <nav class="bg-white dark:bg-stone-300 shadow-md">
+	    <nav class="bg-white dark:bg-gray-400 shadow-md">
 			<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 				<div class="flex justify-between h-16">
 					<div class="flex">
 						<a href="{% url 'main' %}" class="flex items-center text-xl font-bold text-indigo-600">Notetify</a>
 						<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
-							<!-- Change to 'about' -->
 							<a href="{% url 'about' %}" class="inline-flex items-center px-1 pt-1 text-sm font-medium hover:text-indigo-500">About</a>
-							<!-- Change to 'contact' -->
 							<a href="{% url 'contact' %}" class="inline-flex items-center px-1 pt-1 text-sm font-medium hover:text-indigo-500">Contact</a>
 						</div>
 					</div>
 					
 					<div class="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
 						{% if request.user.is_authenticated %}
-							<!-- Change to 'files' -->
-							<a href="{% url 'main' %}" class="text-sm hover:text-indigo-500">My Files</a>
-							<!-- Change to 'settings' -->
-							<a href="{% url 'main' %}" class="text-sm hover:text-indigo-500">Settings</a>
-							<!-- Change to 'logout' -->
-							<a href="{% url 'main' %}" class="text-sm text-red-600 hover:text-red-800">Logout</a>
+							<a href="{% url 'files' %}" class="text-sm hover:text-indigo-500">My Files</a>
+							<a href="{% url 'settings' %}" class="text-sm hover:text-indigo-500">Settings</a>
+							<a href="{% url 'logout' %}" class="text-sm text-red-600 hover:text-red-800">Logout</a>
 							<span class="text-sm text-gray-600">Hello, {{ request.user.username }}</span>
 						{% else %}
-							<!-- 'login' -->	
-							<a href="{% url 'main' %}" class="text-sm text-indigo-600 hover:text-indigo-800">Sign In</a>
-							<!-- 'register' -->
-							<a href="{% url 'main' %}" class="text-sm bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">Create Account</a>
+							<a href="{% url 'login' %}" class="text-sm text-indigo-600 hover:text-indigo-800">Sign In</a>
+							<a href="{% url 'register' %}" class="text-sm bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">Create Account</a>
 						{% endif %}
 					</div>
 
@@ -56,22 +49,15 @@
 			<!-- Mobile menu, show/hide based on menu state. -->
 			<div class="sm:hidden hidden" id="mobile-menu">
 				<div class="pt-2 pb-3 space-y-1">
-					<!-- change to 'about' -->
-					<a href="{% url 'main' %}" class="block pl-3 pr-4 py-2 text-base font-medium hover:text-indigo-500">About</a>
-					<!-- change to 'contact' -->
-					<a href="{% url 'main' %}" class="block pl-3 pr-4 py-2 text-base font-medium hover:text-indigo-500">Contact</a>
+					<a href="{% url 'about' %}" class="block pl-3 pr-4 py-2 text-base font-medium hover:text-indigo-500">About</a>
+					<a href="{% url 'contact' %}" class="block pl-3 pr-4 py-2 text-base font-medium hover:text-indigo-500">Contact</a>
 					{% if request.user.is_authenticated %}
-						<!-- Change to files -->	
 						<a href="{% url 'files' %}" class="block pl-3 pr-4 py-2 text-base font-medium hover:text-indigo-500">My Files</a>
-						<!-- Change to settings -->
 						<a href="{% url 'settings' %}" class="block pl-3 pr-4 py-2 text-base font-medium hover:text-indigo-500">Settings</a>
-						<!-- Change to logout -->
 						<a href="{% url 'logout' %}" class="block pl-3 pr-4 py-2 text-base font-medium text-red-600 hover:text-red-800">Logout</a>
 					{% else %}
-						<!-- Change to login -->	
-						<a href="{% url 'main' %}" class="block pl-3 pr-4 py-2 text-base font-medium hover:text-indigo-500">Sign In</a>
-						<!-- Change to register -->
-						<a href="{% url 'main' %}" class="block pl-3 pr-4 py-2 text-base font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700">Create Account</a>
+						<a href="{% url 'login' %}" class="block pl-3 pr-4 py-2 text-base font-medium hover:text-indigo-500">Sign In</a>
+						<a href="{% url 'register' %}" class="block pl-3 pr-4 py-2 text-base font-medium bg-indigo-600 text-white rounded hover:bg-indigo-700">Create Account</a>
 					{% endif %}
 				</div>
 			</div>
