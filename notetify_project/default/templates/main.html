@@ -12,8 +12,14 @@
             {% endfor %}
         </div>
         {% endif %}
+        {% if request.user.is_authenticated %}
         <div class="mt-5 text-center">
             <a href="{% url 'upload'%}" class="mt-4 mr-10 inline-block bg-blue-600 text-white font-medium px-6 py-2 rounded hover:bg-blue-700 transition"> Upload</a>
         </div>
+        {% else %}
+        <div class="mt-5 text-center">
+            <p class="mt-4 mr-10 inline-block text-white font-medium px-6 py-2 rounded hover:bg-blue-700 transition"> Login to begin uploading</p>
+        </div>
+        {% endif %}
     </div>
 {% endblock %}
