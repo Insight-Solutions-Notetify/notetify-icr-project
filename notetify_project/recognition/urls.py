@@ -3,7 +3,7 @@ from .views import UploadImageView, ImageStatusView, upload_page, upload_image, 
 
 urlpatterns = [
     # Separated and modularized methods (NEW)
-    path('only_upload/', upload_image, name='upload_image'),
+    path('only_upload/', upload_image, name='upload'),
     path('result/<uuid:image_id>/', result_view, name='result_view'),
 
     # Old methods
