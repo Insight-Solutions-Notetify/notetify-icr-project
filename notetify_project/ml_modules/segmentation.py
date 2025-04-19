@@ -219,8 +219,22 @@ def segment_characters(word_image: MatLike,
             # Filter out small contours based on area and aspect ratio
             if area < word_image.shape[0] * HEIGHT_INF:
                 continue
-            char_resized = cv2.resize(add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1), segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
+
+            char_resized = add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1)
+            h, w = char_resized.shape
+            diff = abs(h - w)
+            if h > w:
+                char_resized = add_padding(char_resized, diff // 2, axis=1)
+            else:
+                char_resized = add_padding(char_resized, diff // 2, axis=0)
+
+            char_resized = cv2.resize(char_resized, segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
+            # cv2.imshow("Character image", char_resized)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
             characters_images.append(char_resized.astype(np.float32) / 255.0)
+            # char_resized = cv2.resize(add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1), segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
+            # characters_images.append(char_resized.astype(np.float32) / 255.0)
         
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
