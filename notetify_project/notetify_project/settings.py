@@ -161,3 +161,6 @@ CELERY_BROKER_URL = 'redis://localhost:6379/0'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+PRIVATE_MEDIA_ROOT = os.path.join(BASE_DIR, 'private_media')
+PRIVATE_MEDIA_URL = '/private_media/'
+
