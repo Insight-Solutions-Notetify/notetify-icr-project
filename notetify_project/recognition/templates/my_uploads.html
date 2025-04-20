@@ -6,33 +6,61 @@
         <h2 class="mt-4 mr-10 text-2xl font-semibold text-center text-gray-800 dark:text-white">My Uploaded Notes</h2>
         <a href="{% url 'upload'%}" class="mt-4 mr-10 inline-block bg-blue-600 text-white font-medium px-6 py-2 rounded hover:bg-blue-700 transition"> Upload</a>
     </div>
-    {% if page_obj %}
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
-            {% for image in page_obj %}
-                <div class="p-4 bg-white dark:bg-stone-800 shadow rounded-lg border">
-                    <img src="{{ image.image.url }}" alt="Uploaded Image" class="w-full h-auto object-cover rounded">
-                    <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Uploaded: {{ image.uploaded_at }}</p>
-                    <p class="text-sm text-gray-700 dark:text-gray-300">Status: 
-                        {% if image.processed %}
-                            ✅ Done
-                        {% else %}
-                            ⏳ Processing
-                        {% endif %}
-                    </p>
-                    <a href="{% url 'result_view' image.task_id %}" class="inline-block mt-2 text-blue-700 hover:underline">View Result</a>
-                    <!-- Use 'delete_image' image.task_id --> 
-                    <form method="POST" action="{% url 'delete_image' image.id %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="mt-2 text-red-600 hover:underline">🗑 Delete</button>
-                    </form>
-                    <!-- Use 'reprocess_image' image.task_id -->
-                    <form method="POST" action="{% url 'reprocess_image' image.id %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="mt-2 text-yellow-600 hover:underline">🔁 Re-process</button>
-                    </form>
+    {% if messages %}
+        <div class="mt-4">
+            {% for message in messages %}
+                <div class="p-3 rounded text-sm font-medium 
+                            {% if message.tags == 'error' %} bg-red-100 text-red-800
+                            {% elif message.tags == 'success' %} bg-green-100 text-green-800
+                            {% else %} bg-gray-100 text-gray-800 {% endif %}">
+                    {{ message }}
                 </div>
             {% endfor %}
         </div>
+    {% endif %}
+
+    {% if page_obj %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+            {% for image in page_obj %}
+                <div class="image-entry p-4 bg-white dark:bg-stone-800 shadow rounded-lg border" data-image-id="{{ image.id }}">
+                    <img src="{{ image.image.url }}" alt="Uploaded Image" class="w-full h-auto object-cover rounded">
+                    <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Uploaded: {{ image.uploaded_at }}</p>
+
+                        {% if image.processed %}
+                            <p class="text-green-600">Status: Done</p>
+                            <!-- <img src="{{ image.processed_image.url }}" class="rounded mt-2 max-w-xs">
+                            <p class="text-gray-800 dark:text-gray-50">{{ image.recognized_text|safe }}</p> -->
+                            <a href="{% url 'result_view' image.task_id %}" class="inline-block mt-2 text-blue-700 hover:underline">View Result</a>
+                            <!-- Use 'delete_image' image.task_id --> 
+                            <form method="POST" action="{% url 'delete_image' image.id %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" class="mt-2 text-red-600 hover:underline">🗑 Delete</button>
+                            </form>
+                            <!-- Use 'reprocess_image' image.task_id -->
+                            <form method="POST" action="{% url 'reprocess_image' image.id %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit" class="mt-2 text-yellow-600 hover:underline">🔁 Re-process</button>
+                            </form>
+                        {% else %}
+                            <p class="text-yellow-500">Status: Processing...</p>
+                            <a href="{% url 'result_view' image.task_id %}" class="inline-block mt-2 text-blue-700 hover:underline" id="view_img" hidden>View Result</a>
+                            <form method="POST" action="{% url 'delete_image' image.id %}" class="inline" id="rm_img" hidden>
+                                {% csrf_token %}
+                                <button type="submit" class="mt-2 text-red-600 hover:underline">🗑 Delete</button>
+                            </form>
+                            <!-- Use 'reprocess_image' image.task_id -->
+                            <form method="POST" action="{% url 'reprocess_image' image.id %}" class="inline" id="re_img" hidden>
+                                {% csrf_token %}
+                                <button type="submit" class="mt-2 text-yellow-600 hover:underline">🔁 Re-process</button>
+                            </form>
+                        {% endif %}
+                            
+                </div>
+            {% endfor %}
+        </div>
+        <p class="text-center text-sm text-gray-500 mt-2 dark:text-gray-400">
+        You have uploaded {{ count }} out of 10 allowed images.
+        </p>
 
         <!-- Pagination -->
         <div class="mt-6 text-center">
@@ -50,4 +78,51 @@
         </div>
     {% endif %}
 </div>
+<script>
+function checkStatusAndUpdate() {
+    fetch("{% url 'check_processing_status' %}")
+        .then(response => response.json())
+        .then(data => {
+            document.querySelectorAll('.image-entry').forEach(entry => {
+                const id = entry.getAttribute('data-image-id');
+                const imageInfo = data[id];
+
+                if (imageInfo && imageInfo.processed) {
+                    const statusText = entry.querySelector('p.text-yellow-500');
+                    if (statusText) {
+                        statusText.textContent = "Status: Done";
+                        statusText.classList.remove("text-yellow-500");
+                        statusText.classList.add("text-green-600");
+
+                        const viewButton = document.getElementById("view_img");
+                        viewButton.removeAttribute("hidden");
+
+                        const removeButton = document.getElementById("rm_img");
+                        removeButton.removeAttribute("hidden");
+
+                        const reprocessButton = document.getElementById("re_img");
+                        reprocessButton.removeAttribute("hidden");
+
+                        // // Add recognized text
+                        // const textBlock = document.createElement("p");
+                        // textBlock.innerHTML = imageInfo.recognized_text;
+                        // textBlock.className = "text-gray-800 dark:text-gray-50 mt-2";
+                        // entry.appendChild(textBlock);
+
+                        // // Add processed image
+                        // if (imageInfo.processed_image_url) {
+                        //     const img = document.createElement("img");
+                        //     img.src = imageInfo.processed_image_url;
+                        //     img.className = "rounded mt-2 max-w-xs";
+                        //     entry.appendChild(img);
+                        // }
+                    }
+                }
+            });
+        });
+}
+
+// Poll every 5 seconds
+setInterval(checkStatusAndUpdate, 5000);
+</script>
 {% endblock %}
