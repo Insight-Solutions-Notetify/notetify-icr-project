@@ -25,7 +25,7 @@ def resize_and_center_char(img, output_size=(28, 28)):
     resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
     # Create white square canvas
-    canvas = np.ones(output_size, dtype=np.uint8) * 255
+    canvas = np.zeros(output_size, dtype=np.uint8) * 255
 
     # Compute center placement
     x_offset = (target_w - new_w) // 2
@@ -276,21 +276,21 @@ def segment_characters(word_image: MatLike,
             #     char_resized = add_padding(char_resized, diff // 2, axis=0)
 
             # char_resized = cv2.resize(char_resized, segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
-            # # cv2.imshow("Character image", char_resized)
-            # # cv2.waitKey(0)
-            # # cv2.destroyAllWindows()
             # characters_images.append(char_resized.astype(np.float32) / 255.0)
 
             
             # char_resized = cv2.resize(add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1), segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
-            # characters_images.append(char_resized.astype(np.float32) / 255.0)
             # char_crop = word_image[y:y+h, x:x+w]
             # squared = add_square_padding(char_crop)
             # resized = cv2.resize(squared, (28, 28), interpolation=cv2.INTER_AREA)
             # characters_images.append(resized)
             char_crop = word_image[y:y+h, x:x+w]
             square_char = resize_and_center_char(char_crop, output_size=(28, 28))
-            characters_images.append(square_char)
+            # cv2.imshow("Character image", square_char)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+            characters_images.append(square_char.astype(np.float32) / 255.0)
+            # characters_images.append(square_char)
             
         
     except Exception as e:
