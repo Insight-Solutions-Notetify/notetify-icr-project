@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto mt-10 px-4">
+    <div class="mt-5 text-center">
+        <h2 class="mt-4 mr-10 text-2xl font-semibold text-center text-gray-800 dark:text-white">My Uploaded Notes</h2>
+        <a href="{% url 'upload'%}" class="mt-4 mr-10 inline-block bg-blue-600 text-white font-medium px-6 py-2 rounded hover:bg-blue-700 transition"> Upload</a>
+    </div>
+    {% if page_obj %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+            {% for image in page_obj %}
+                <div class="p-4 bg-white dark:bg-stone-800 shadow rounded-lg border">
+                    <img src="{{ image.image.url }}" alt="Uploaded Image" class="w-full h-auto object-cover rounded">
+                    <p class="mt-2 text-sm text-gray-700 dark:text-gray-300">Uploaded: {{ image.uploaded_at }}</p>
+                    <p class="text-sm text-gray-700 dark:text-gray-300">Status: 
+                        {% if image.processed %}
+                            ✅ Done
+                        {% else %}
+                            ⏳ Processing
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'result_view' image.task_id %}" class="inline-block mt-2 text-blue-700 hover:underline">View Result</a>
+                    <!-- Use 'delete_image' image.task_id --> 
+                    <form method="POST" action="{% url 'delete_image' image.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="mt-2 text-red-600 hover:underline">🗑 Delete</button>
+                    </form>
+                    <!-- Use 'reprocess_image' image.task_id -->
+                    <form method="POST" action="{% url 'reprocess_image' image.id %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="mt-2 text-yellow-600 hover:underline">🔁 Re-process</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        <div class="mt-6 text-center">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}" class="mr-2 text-blue-500">← Previous</a>
+            {% endif %}
+            <span class="text-gray-600">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" class="ml-2 text-blue-500">Next →</a>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="mt-5 text-center">
+            <p class="mr-10 text-center mt-8 text-gray-600 dark:text-gray-300">You haven't uploaded any notes yet.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
