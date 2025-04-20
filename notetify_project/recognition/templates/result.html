@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto mt-10 px-4 text-center">
-    <a href="/" class="mt-4 inline-block bg-blue-600 text-white font-medium px-6 py-2 rounded hover:bg-blue-700 transition">Return to homepage</a>
+    <a href="{% url 'my_uploads'%}" class="mt-4 inline-block bg-blue-600 text-white font-medium px-6 py-2 rounded hover:bg-blue-700 transition">Return to uploads</a>
     {% if image.processed %}
         <h2 class="mt-10 text-2xl font-semibold text-gray-800 dark:text-white">Processed Result</h2>
         <p class="mt-4 text-gray-700 dark:text-gray-300">Recognized Text:</p>
