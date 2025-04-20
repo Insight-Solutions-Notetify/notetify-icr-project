@@ -29,7 +29,7 @@ def login_page(request):
         else:
             # Log in the user and redirect to the home page upon successful login
             login(request, user)
-            return redirect('main')
+            return redirect('my_uploads')
     
     # Render the login page template (GET request)
     return render(request, 'login.html')
