@@ -10,3 +10,12 @@ scikit-learn==1.6.1
 PyQt6==6.8.0
 colorlog==6.9.0
 dotenv==0.9.9
+django==5.1.7
+djangorestframework==3.15.2
+django-tailwind==4.0.1
+django-browser-reload==1.18.0
+pillow==11.1.0
+psycopg2-binary==2.9.10
+celery==5.3.1
+redis==4.6.0
+gevent==24.11.1

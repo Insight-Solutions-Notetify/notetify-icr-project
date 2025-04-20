@@ -1,5 +1,7 @@
 __pycache__/
 env/
-emnist_model_*
+*emnist_model
 segmented_output/
 logs/
+media/
+training/

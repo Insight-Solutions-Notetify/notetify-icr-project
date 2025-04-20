@@ -11,9 +11,9 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, project_root)
 os.chdir(project_root)
 
-from src.modules.preprocessing import preprocessImage
 from src.config.segmentation_config import segmentation_config
 from src.modules.logger import logger, log_execution_time
+from src.modules.preprocessing import preprocessImage
 
 def flipImage(input: MatLike) -> MatLike:
     ''' Inverse of inputted image '''
@@ -31,51 +31,21 @@ def add_padding(img: MatLike, padding, axis=0):
     """
     pad_shape = list (img.shape)
     pad_shape[axis] = padding
-    pad_block = flipImage(np.zeros(pad_shape, dtype = img.dtype))
+    pad_block = np.zeros(pad_shape, dtype = img.dtype)
     return np.concatenate([pad_block, img, pad_block], axis=axis)
 
 @log_execution_time
-    
-@log_execution_time
-def segment_lines_new(image):
-    """
-    Segment the binary image into individual lines based on horizontal projection.
-    """
-    try:
-        # Flip for processing
-        flipped = cv2.bitwise_not(image)
-
-        # Sum pixel values horizontally
-        horizontal_projection = np.sum(flipped, axis=1)
-
-        # Detect lines based on where the projection is > 0 (text exists)
-        lines = []
-        start = None
-        for i, row_sum in enumerate(horizontal_projection):
-            if row_sum > 0 and start is None:
-                start = i
-            elif row_sum == 0 and start is not None:
-                end = i
-                line_img = image[max(0, start - segmentation_config.WIDTH_CHAR_BUFFER):min(image.shape[0], end), :]
-                if (end - start) > 10:  # Filter small noise
-                    lines.append(line_img)
-                start = None
-
-        return lines
-    except Exception as e:
-        logger.error(f"Error in line segmentation: {e}")
-        return []
-    
-@log_execution_time
-def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_FACTOR, text_thresh=segmentation_config.TEXT_LINE_THRESHOLD, line_padding=segmentation_config.HEIGHT_CHAR_BUFFER) -> list:
+def segment_lines(image: MatLike, 
+                  line_gap_factor=segmentation_config.LINE_GAP_FACTOR, 
+                  text_thresh=segmentation_config.TEXT_LINE_THRESHOLD, 
+                  line_padding=segmentation_config.HEIGHT_CHAR_BUFFER) -> list:
     """
     Segment lines fro ma binary image using horizontal projection and dynamic gap thresholding
     """
     try:
-        flipped = flipImage(image)
 
         # Horizontal projection (sum along columns → shape = height,)
-        projection = np.sum(flipped, axis=1)
+        projection = np.sum(image, axis=1)
 
         # Find rows with any ink
         ink_threshold = np.max(projection) * text_thresh
@@ -134,22 +104,22 @@ def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_F
         return []
     
 @log_execution_time
-def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD_GAP_FACTOR, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
+def segment_words(line_image: MatLike, 
+                  threshold_factor=segmentation_config.WORD_GAP_FACTOR, 
+                  WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER) -> list:
     """
     Segment a line image into individual words based on vertical projection.
     """
     try:
-        
         # cv2.imshow("Before Word Seg", line_image)
         # cv2.waitKey(0)
 
         if segmentation_config.MIN_WORD_IMG_HEIGHT > line_image.shape[0]:
             logger.warning(f"Word to small to obtain image")
             return []
-        flipped = flipImage(line_image)
 
         # Vertical Projection
-        projection = np.sum(flipped, axis=0)
+        projection = np.sum(line_image, axis=0)
 
         # Find where text is present
         text_columns = np.where(projection > 0)[0]
@@ -198,45 +168,49 @@ def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD
         return []
 
 @log_execution_time
-def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CHAR_SIZE, MERGE_MIN_X=segmentation_config.MERGING_MIN_X, MERGE_MIN_Y=segmentation_config.MERGING_MIN_Y, WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER, HEIGHT_INF=segmentation_config.HEIGHT_INFLUENCE) -> list:
+def segment_characters(word_image: MatLike, 
+                       WIDTH_BUFFER=segmentation_config.WIDTH_CHAR_BUFFER, 
+                       HEIGHT_INF=segmentation_config.HEIGHT_INFLUENCE,
+                       proximity_thresh=segmentation_config.PROXIMITY_THRESHOLD) -> list:
     """
     Segment a word image into individual characters using contour detection.
     """
     try:
-        flipped = flipImage(word_image)
-        # cv2.imshow("Word", word_image)
-        # cv2.waitKey(0)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        dilated = cv2.dilate(word_image, kernel, iterations=1)
         
         # Find contours of characters
-        cnts = cv2.findContours(flipped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = cnts[0] if len(cnts) == 2 else cnts[1]
         if len(cnts) == 0:
             return []
         
-        # Sort contours from left to right based on x-coord
-        cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
-
         logger.debug(f"Detected {len(cnts)} contours.")
-        # Merge overlapping contours in the x-direction
-        logger.debug("Merging overlapping contours")
-        for i in range(len(cnts) - 1):
-            # logger.warning(f"Index: {i}")
-            for j in range(i + 1, len(cnts)):
-                if len(cnts[i]) == 0 or len(cnts[j]) == 0:
-                    continue
-                x1, y1, w1, h1 = cv2.boundingRect(cnts[i])
-                x2, y2, w2, h2 = cv2.boundingRect(cnts[j])
-                if x2 - (x1 + w1) < MERGE_MIN_X:
-                    if y2 - (y1 + h1) < MERGE_MIN_Y:
-                        if w1 + w2 > char_size[0]:
-                            cnts[i] = np.concatenate((cnts[i], cnts[j]))
-                            cnts[j] = np.array([])
-        
-        # Remove empty contours
-        cnts = [c for c in cnts if len(c) > 0]
-        logger.debug(f"Detected {len(cnts)} contours after merging.")
+        boxes = [cv2.boundingRect(c) for c in cnts]
+        merged = []
+        used = [False] * len(cnts)
 
-        cnts = sorted(cnts, key=lambda ctr: cv2.boundingRect(ctr)[0])
+        for i in range(len(cnts)):
+            if used[i]:
+                continue
+            x, y, w, h = boxes[i]
+            current = [i]
+            used[i] = True
+
+            for j in range(i + 1, len(cnts)):
+                if used[j]:
+                    continue
+                x2, y2, w2, h2 = boxes[j]
+                if abs((x + w / 2) -  (x2 + w2 / 2)) < proximity_thresh and abs((y + h / 2) - (y2 + h2 / 2)) < proximity_thresh:
+                    current.append(j)
+                    used[j] = True
+
+            merged_pts = np.vstack([cnts[k] for k in current])
+            merged.append(cv2.convexHull(merged_pts))
+ 
+        logger.debug(f"Detected {len(merged)} contours after merging.")
+
+        cnts = sorted(merged, key=lambda ctr: cv2.boundingRect(ctr)[0])
         characters_images = []
         for i, c in enumerate(cnts):
             x, y, w, h = cv2.boundingRect(c)
@@ -245,17 +219,31 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
             # Filter out small contours based on area and aspect ratio
             if area < word_image.shape[0] * HEIGHT_INF:
                 continue
-            char_resized = cv2.resize(add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1), segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
-            characters_images.append(char_resized)
+
+            char_resized = add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1)
+            h, w = char_resized.shape
+            diff = abs(h - w)
+            if h > w:
+                char_resized = add_padding(char_resized, diff // 2, axis=1)
+            else:
+                char_resized = add_padding(char_resized, diff // 2, axis=0)
+
+            char_resized = cv2.resize(char_resized, segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
+            cv2.imshow("Character image", char_resized)
+            cv2.waitKey(0)
+            characters_images.append(char_resized.astype(np.float32) / 255.0)
         
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
         return []
 
+    # for char in characters_images:
+    #     cv2.imshow("char", char)
+    #     cv2.waitKey(0)
     return characters_images
 
 @log_execution_time
-def segmentImage(image: MatLike, model=None) -> tuple:
+def segmentImage(image: MatLike) -> tuple:
     """
     Segmentation pipeline to break down images into lines, words, and characters. (Metadata + character images)
     """
@@ -267,54 +255,34 @@ def segmentImage(image: MatLike, model=None) -> tuple:
 
     # Word Segmentation
     for line_idx, line_img in enumerate(line_images):
+        # cv2.imshow("Line", line_img)
+        # cv2.waitKey(0)
         word_images = segment_words(line_img)
 
         # Character Segmentation
         for word_idx, word_img in enumerate(word_images):
+            # cv2.imshow("Word", word_img)
+            # cv2.waitKey(0)
             char_images = segment_characters(word_img)
 
-            # Run character recognition here since post_processing is done already
-            predicted_characters = []
-            ## NOTE THIS METHOD IS JUST HERE TO KEEP TRACK OF IT FOR THE FUTURE (NOT USED)
-            if model is not None: 
-                predictions = model.predict(char_images)
+            # Text Hierarchy Preserving
+            for char_idx, char_img in enumerate(char_images):
+                # logger.debug(f"Added another char to word: {word_idx}")
+                # cv2.imshow(f"Character {char_idx + 1}", char_img)
+                # cv2.waitKey(0)
+                segmented_images.append(char_img)
+                segmented_metadata.append({
+                    'line_idx': line_idx,
+                    'word_idx': word_idx,
+                    'char_idx': char_idx,
+                    'image_idx': len(segmented_images) - 1 # index into char_images
+                })
 
-                if len(predictions) < len(word_img):
-                    logger.error("Failed to obtain predictions for all characters")
-                    return []
-                for predict_char in predictions:
-                    if predict_char[1] > 0.5: # Confidence saved in model
-                        predicted_characters.append(predict_char[0])
-                    else:
-                        predicted_characters.append(' ')
+    # logger.debug(f"Segmented Data: {segmented_metadata}")
 
-                # Text Hierarchy Preserving
-                for char_idx, char in enumerate(predicted_characters):
-                    segmented_metadata.append({
-                        'line_idx': line_idx,
-                        'word_idx': word_idx,
-                        'char_idx': char_idx,
-                        'char': char
-                    })
-            ## REMOVE ABOVE TO SIGNIFICANT NOTE
-            else:
-                # Text Hierarchy Preserving
-                for char_idx, char_img in enumerate(char_images):
-                    # logger.debug(f"Added another char to word: {word_idx}")
-                    # cv2.imshow(f"Character {char_idx + 1}", char_img)
-                    # cv2.waitKey(0)
-                    segmented_images.append(char_img)
-                    segmented_metadata.append({
-                        'line_idx': line_idx,
-                        'word_idx': word_idx,
-                        'char_idx': char_idx,
-                        'image_idx': len(segmented_images) - 1 # index into char_images
-                    })
-
-    logger.debug(f"Segmented Data: {segmented_metadata}")
-
+    # Reshape images to fit tensorflow input
+    segmented_images = np.reshape(segmented_images, (len(segmented_images),28, 28, 1))
     return segmented_images, segmented_metadata
-
 
 # TESTING ONLY
 def save_images(images, folder, prefix):
@@ -452,8 +420,8 @@ if __name__ == "__main__":
             logger.warning(f"{name} not found in NCR_samples... skipping")
         
     for i in range(len(file_names)):
-        logger.debug(f"Beginning segmentation on {file_names[i]}")
         preprocessed = preprocessImage(cv2.imread(f"{image_path}{file_names[i]}"))
+        logger.debug(f"Beginning segmentation on {file_names[i]}")
         # cv2.imshow("Preprocessed", preprocessed)
         # cv2.waitKey(0)
         # binary = cv2.threshold(images[i], 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]

@@ -94,6 +94,9 @@ class EmnistDataloader(object):
                 img = np.array(image_data[i * rows * cols:(i + 1) * rows * cols]) # Get data of image using slicing operations
                 img = img.reshape(28, 28) # 28 x 28 format size
                 img = img.transpose() # Flip horizontally and rotate 90 degrees counter-clockwise.
+                a = img.min()
+                b = img.max()
+                img = (img - a) / (b - a)
                 images[i][:] = img # Replace the empty 2D array with the actual image data
                 bar()
          
@@ -321,6 +324,7 @@ def test_model(model=None, dataset=None, start_index=0, size=0, filename_model=N
         
         result = model.predict(x_rand_test, batch_size=32)
         printed_guess = [character_by_index[np.argmax(ix)] for ix in result]
+        print(printed_guess)
         confidence = [np.max(ix) for ix in result]
 
         # Combine the results into a single string
@@ -402,7 +406,7 @@ async def main():
             if not size == 0:
                 start_index = int(input("Starting index of test_images:"))
             filename_model = 'emnist_model.keras'
-            filename_weights = 'emnist_model_loss0.68.weights.h5'
+            filename_weights = 'emnist_model_loss0.52.weights.h5'
             if start_index + size > len(dataset[2]):
                 print("Invalid combination of size and start index")
             else:
