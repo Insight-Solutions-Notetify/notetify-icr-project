@@ -8,8 +8,8 @@ from celery import shared_task
 from .models import HandwritingImage
 from ml_modules import preprocessImage, segmentImage
 
-model = models.load_model('model/emnist_model.keras')
-model.load_weights('model/emnist_model_loss0.68.weights.h5')
+model = models.load_model('model\emnist_model.keras')
+model.load_weights('model\emnist_model_loss0.68.weights.h5')
 
 @shared_task
 def process_upload_image(image_id):

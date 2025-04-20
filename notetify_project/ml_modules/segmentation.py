@@ -7,13 +7,62 @@ import sys
 import subprocess
 import re
 
-# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-# sys.path.insert(0, project_root)
-# os.chdir(project_root)
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.insert(0, project_root)
+os.chdir(project_root)
 
-from .config.segmentation_config import segmentation_config
-from .logger import logger, log_execution_time
-from .preprocessing import preprocessImage
+from src.modules.preprocessing import preprocessImage
+from src.config.segmentation_config import segmentation_config
+from src.modules.logger import logger, log_execution_time
+
+def resize_and_center_char(img, output_size=(28, 28)):
+    h, w = img.shape
+    target_h, target_w = output_size
+
+    # Compute scaling factor to fit character into the output size
+    scale = min(target_w / w, target_h / h)
+    new_w, new_h = int(w * scale), int(h * scale)
+    resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    # Create white square canvas
+    canvas = np.ones(output_size, dtype=np.uint8) * 255
+
+    # Compute center placement
+    x_offset = (target_w - new_w) // 2
+    y_offset = (target_h - new_h) // 2
+
+    # Paste resized character into the center
+    canvas[y_offset:y_offset+new_h, x_offset:x_offset+new_w] = resized
+
+    return canvas
+
+def add_square_padding(img: np.ndarray) -> np.ndarray:
+    height, width = img.shape
+    if height == width:
+        return img
+
+    # Determine padding size
+    if height > width:
+        padding = (height - width) // 2
+        return np.pad(img, ((0, 0), (padding, height - width - padding)), mode='constant')
+    else:
+        padding = (width - height) // 2
+        return np.pad(img, ((padding, width - height - padding), (0, 0)), mode='constant')
+
+def trim_and_resize(line_img, target_height=32):
+    # Trim top/bottom whitespace
+    row_sums = np.sum(line_img, axis=1)
+    non_empty = np.where(row_sums > 0)[0]
+    if non_empty.size == 0:
+        return None  # skip empty lines
+    top, bottom = non_empty[0], non_empty[-1] + 1
+    trimmed = line_img[top:bottom, :]
+    
+    # Resize height
+    h, w = trimmed.shape
+    scale = target_height / h
+    resized = cv2.resize(trimmed, (int(w * scale), target_height), interpolation=cv2.INTER_NEAREST)
+    return resized
 
 def flipImage(input: MatLike) -> MatLike:
     ''' Inverse of inputted image '''
@@ -31,7 +80,7 @@ def add_padding(img: MatLike, padding, axis=0):
     """
     pad_shape = list (img.shape)
     pad_shape[axis] = padding
-    pad_block = np.zeros(pad_shape, dtype = img.dtype)
+    pad_block = flipImage(np.zeros(pad_shape, dtype = img.dtype))
     return np.concatenate([pad_block, img, pad_block], axis=axis)
 
 @log_execution_time
@@ -40,9 +89,10 @@ def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_F
     Segment lines fro ma binary image using horizontal projection and dynamic gap thresholding
     """
     try:
+        flipped = flipImage(image)
 
         # Horizontal projection (sum along columns → shape = height,)
-        projection = np.sum(image, axis=1)
+        projection = np.sum(flipped, axis=1)
 
         # Find rows with any ink
         ink_threshold = np.max(projection) * text_thresh
@@ -65,9 +115,10 @@ def segment_lines(image: MatLike, line_gap_factor=segmentation_config.LINE_GAP_F
         # Compute gaps between lines
         gaps = [boundaries[i + 1][0] - boundaries[i][1] for i in range(len(boundaries) - 1)]
         if not gaps:
-            return [add_padding(image[start:end+1, :], line_padding, axis=0) for (start, end) in boundaries]
+             return [add_padding(image[start:end+1, :], line_padding, axis=0) for (start, end) in boundaries]
 
-        median_gap = np.median(gaps)
+
+        #median_gap = np.median(gaps)
         gap_stat = np.percentile(gaps, 40)
         line_gap_thresh = gap_stat * line_gap_factor
         # logger.warning(f"Threshold line gap: {line_gap_thresh}")
@@ -106,15 +157,17 @@ def segment_words(line_image: MatLike, threshold_factor=segmentation_config.WORD
     Segment a line image into individual words based on vertical projection.
     """
     try:
+        
         # cv2.imshow("Before Word Seg", line_image)
         # cv2.waitKey(0)
 
         if segmentation_config.MIN_WORD_IMG_HEIGHT > line_image.shape[0]:
             logger.warning(f"Word to small to obtain image")
             return []
+        flipped = flipImage(line_image)
 
         # Vertical Projection
-        projection = np.sum(line_image, axis=0)
+        projection = np.sum(flipped, axis=0)
 
         # Find where text is present
         text_columns = np.where(projection > 0)[0]
@@ -168,11 +221,12 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
     Segment a word image into individual characters using contour detection.
     """
     try:
+        flipped = flipImage(word_image)
         # cv2.imshow("Word", word_image)
         # cv2.waitKey(0)
         
         # Find contours of characters
-        cnts = cv2.findContours(word_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cv2.findContours(flipped, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cnts = cnts[0] if len(cnts) == 2 else cnts[1]
         if len(cnts) == 0:
             return []
@@ -205,12 +259,18 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
         for i, c in enumerate(cnts):
             x, y, w, h = cv2.boundingRect(c)
             area = w * h
-
+            
             # Filter out small contours based on area and aspect ratio
             if area < word_image.shape[0] * HEIGHT_INF:
                 continue
-            char_resized = cv2.resize(add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1), segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
-            characters_images.append(char_resized)
+            # char_crop = word_image[y:y+h, x:x+w]
+            # squared = add_square_padding(char_crop)
+            # resized = cv2.resize(squared, (28, 28), interpolation=cv2.INTER_AREA)
+            # characters_images.append(resized)
+            char_crop = word_image[y:y+h, x:x+w]
+            square_char = resize_and_center_char(char_crop, output_size=(28, 28))
+            characters_images.append(square_char)
+            
         
     except Exception as e:
         logger.error(f"Error in character segmentation: {e}")
@@ -219,7 +279,7 @@ def segment_characters(word_image: MatLike, char_size=segmentation_config.MIN_CH
     return characters_images
 
 @log_execution_time
-def segmentImage(image: MatLike) -> tuple:
+def segmentImage(image: MatLike, model=None) -> tuple:
     """
     Segmentation pipeline to break down images into lines, words, and characters. (Metadata + character images)
     """
@@ -237,27 +297,46 @@ def segmentImage(image: MatLike) -> tuple:
         for word_idx, word_img in enumerate(word_images):
             char_images = segment_characters(word_img)
 
-            # Text Hierarchy Preserving
-            for char_idx, char_img in enumerate(char_images):
-                # logger.debug(f"Added another char to word: {word_idx}")
-                # cv2.imshow(f"Character {char_idx + 1}", char_img)
-                # cv2.waitKey(0)
-                segmented_images.append(char_img)
-                segmented_metadata.append({
-                    'line_idx': line_idx,
-                    'word_idx': word_idx,
-                    'char_idx': char_idx,
-                    'image_idx': len(segmented_images) - 1 # index into char_images
-                })
+            # Run character recognition here since post_processing is done already
+            predicted_characters = []
+            ## NOTE THIS METHOD IS JUST HERE TO KEEP TRACK OF IT FOR THE FUTURE (NOT USED)
+            if model is not None: 
+                predictions = model.predict(char_images)
 
-    # logger.debug(f"Segmented Data: {segmented_metadata}")
+                if len(predictions) < len(word_img):
+                    logger.error("Failed to obtain predictions for all characters")
+                    return []
+                for predict_char in predictions:
+                    if predict_char[1] > 0.5: # Confidence saved in model
+                        predicted_characters.append(predict_char[0])
+                    else:
+                        predicted_characters.append(' ')
 
-    # Reshape images to fit tensorflow input
-    segmented_images = np.reshape(segmented_images, (len(segmented_images),28, 28, 1))
+                # Text Hierarchy Preserving
+                for char_idx, char in enumerate(predicted_characters):
+                    segmented_metadata.append({
+                        'line_idx': line_idx,
+                        'word_idx': word_idx,
+                        'char_idx': char_idx,
+                        'char': char
+                    })
+            ## REMOVE ABOVE TO SIGNIFICANT NOTE
+            else:
+                # Text Hierarchy Preserving
+                for char_idx, char_img in enumerate(char_images):
+                    # logger.debug(f"Added another char to word: {word_idx}")
+                    # cv2.imshow(f"Character {char_idx + 1}", char_img)
+                    # cv2.waitKey(0)
+                    segmented_images.append(char_img)
+                    segmented_metadata.append({
+                        'line_idx': line_idx,
+                        'word_idx': word_idx,
+                        'char_idx': char_idx,
+                        'image_idx': len(segmented_images) - 1 # index into char_images
+                    })
 
-    # for img in segmented_images:
-    #     cv2.imshow("Char", img)
-    #     cv2.waitKey(0)
+    logger.debug(f"Segmented Data: {segmented_metadata}")
+
     return segmented_images, segmented_metadata
 
 # TESTING ONLY
@@ -327,12 +406,17 @@ def test_line_segmentation(image: str, output_dir: str) -> None:
     
     binary = cv2.threshold(img, 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
     lines = segment_lines(binary)
-    logger.debug(f"Detected {len(lines)} lines.")
+    processed_lines = []
+    for line in segment_lines(binary):
+        processed = trim_and_resize(line)
+        if processed is not None:
+            processed_lines.append(processed)
+    logger.debug(f"Detected {len(processed_lines)} lines.")
 
-    if len(lines) == 1:
-        save_images(lines, os.path.join(output_dir, f"image_{image}"), "line")
+    if len(processed_lines) == 1:
+        save_images(processed_lines, os.path.join(output_dir, f"image_{image}"), "line")
     else:
-        save_images(lines, os.path.join(output_dir, f"image_{image}"), "line" )
+        save_images(processed_lines, os.path.join(output_dir, f"image_{image}"), "line" )
 
     words = [segment_words(line) for line in lines]
     if len(words) != 0:
@@ -403,6 +487,12 @@ if __name__ == "__main__":
         # binary = cv2.threshold(images[i], 0, segmentation_config.MAX_VALUE, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
         segmented_images, segmented_metadata = segmentImage(preprocessed) # Should return a list of dict elements that hold the metadata and image of characters
 
+        for j, segment in enumerate(segmented_images):
+            char_img = segment["image"] if isinstance(segment, dict) else segment  # support for dict or just array
+            cv2.imshow(f"Character {j+1}", char_img)
+            cv2.waitKey(0)  # Wait for key press
+            cv2.destroyAllWindows()
+
         import json
         file_path = f"{output_dir}/{i}image.json"
         with open(file_path, 'w') as json_file:
@@ -412,6 +502,6 @@ if __name__ == "__main__":
         # logger.debug(f"Test segmenting image {file_names[i]}")
         # segmented = test_line_segmentation(file_names[i], output_dir)
         # segmented = test_word_segmentation(file_names[i], output_dir)
-        # segmented = test_character_segmentation(file_names[i], output_dir)
+        segmented = test_character_segmentation(file_names[i], output_dir)
     
     logger.info("Complete segmentation module")
