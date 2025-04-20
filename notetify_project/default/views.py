@@ -10,8 +10,5 @@ def about(request):
 def contact(request):
     return render(request, 'contact.html')
 
-def files(request):
-    return render(request, 'temp-files.html')
-
 def settings(request):
     return render(request, 'temp-settings.html')
