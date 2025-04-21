@@ -1,8 +1,6 @@
 from django.shortcuts import render, redirect
 from .forms import ContactForm
-from django.http import HttpResponse
-from django.core.mail import EmailMessage
-from django.conf import settings
+from django.core.mail import send_mail
 
 # Create your views here.
 def main(request):
@@ -24,15 +22,14 @@ def contact(request):
             subject = form.cleaned_data['subject']
             message = form.cleaned_data['message']
 
-            # # Send an email
-            # EmailMessage(
-            #     'Contact Form Submission from {}'.format(name),
-            #     message,
-            #     'notetify@gamil.com', # Send from
-            #     ['admin@gmail.com'], # Send to
-            #     [],
-            #     reply_to=[email] # Email from the form to get back to
-            # ).send()
+            # Send an email
+            send_mail(
+                subject,
+                message,
+                email,
+                ['to@example.com'],
+                fail_silently=False,
+            )
 
             return redirect('success')
         else:
