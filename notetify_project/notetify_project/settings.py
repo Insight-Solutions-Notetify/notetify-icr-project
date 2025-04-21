@@ -164,3 +164,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 PRIVATE_MEDIA_ROOT = os.path.join(BASE_DIR, 'private_media')
 PRIVATE_MEDIA_URL = '/private_media/'
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'live.smtp.mailtrap.io'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'your-email@yourserver.com'
+EMAIL_HOST_PASSWORD = 'your-email-password'
+ADMIN_EMAIL = 'admin@yourdomain.com'
