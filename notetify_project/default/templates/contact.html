@@ -3,5 +3,16 @@
 {% block content %}
     <div class="bg-white-900 container mt-5 dark:bg-stone-900 mx-auto">
         <h2 class="text-2xl font-semibold text-center text-gray-800 dark:text-gray-50">Contact Us</h2>
+
+        <form class="text-black dark:text-white" action="{% url 'contact' %}" method="post">
+        {% csrf_token %}
+        {% for field in form %}
+            <div class="fieldWrapper">
+                {{ field.errors }}
+                {{ field.label_tag }} {{ field }}
+            </div>
+        {% endfor %}
+        <input type="submit" value="Submit">
+        </form>
     </div>
 {% endblock %}
