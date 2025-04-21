@@ -25,7 +25,7 @@ def resize_and_center_char(img, output_size=(28, 28)):
     resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
 
     # Create white square canvas
-    canvas = np.ones(output_size, dtype=np.uint8) * 255
+    canvas = np.zeros(output_size, dtype=np.uint8) * 255
 
     # Compute center placement
     x_offset = (target_w - new_w) // 2
@@ -117,8 +117,7 @@ def segment_lines(image: MatLike,
         # Compute gaps between lines
         gaps = [boundaries[i + 1][0] - boundaries[i][1] for i in range(len(boundaries) - 1)]
         if not gaps:
-             return [add_padding(image[start:end+1, :], line_padding, axis=0) for (start, end) in boundaries]
-
+            return [add_padding(image[start:end+1, :], line_padding, axis=0) for (start, end) in boundaries]
 
         #median_gap = np.median(gaps)
         gap_stat = np.percentile(gaps, 40)
@@ -161,8 +160,6 @@ def segment_words(line_image: MatLike,
     Segment a line image into individual words based on vertical projection.
     """
     try:
-        # cv2.imshow("Before Word Seg", line_image)
-        # cv2.waitKey(0)
 
         if segmentation_config.MIN_WORD_IMG_HEIGHT > line_image.shape[0]:
             logger.warning(f"Word to small to obtain image")
@@ -270,7 +267,7 @@ def segment_characters(word_image: MatLike,
             if area < word_image.shape[0] * HEIGHT_INF:
                 continue
 
-            # char_resized = add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1)
+            # char_resized = add_padding(dilated[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1)
             # h, w = char_resized.shape
             # diff = abs(h - w)
             # if h > w:
@@ -279,17 +276,20 @@ def segment_characters(word_image: MatLike,
             #     char_resized = add_padding(char_resized, diff // 2, axis=0)
 
             # char_resized = cv2.resize(char_resized, segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
-            # cv2.imshow("Character image", char_resized)
-            # cv2.waitKey(0)
             # characters_images.append(char_resized.astype(np.float32) / 255.0)
 
-
+            
+            # char_resized = cv2.resize(add_padding(word_image[0:word_image.shape[0], x:x + w], WIDTH_BUFFER, axis=1), segmentation_config.IMAGE_DIMS, interpolation=cv2.INTER_AREA)
             # char_crop = word_image[y:y+h, x:x+w]
             # squared = add_square_padding(char_crop)
             # resized = cv2.resize(squared, (28, 28), interpolation=cv2.INTER_AREA)
             # characters_images.append(resized)
-            # char_crop = word_image[y:y+h, x:x+w]
-            # square_char = resize_and_center_char(char_crop, output_size=(28, 28))
+            char_crop = word_image[y:y+h, x:x+w]
+            square_char = resize_and_center_char(char_crop, output_size=(28, 28))
+            # cv2.imshow("Character image", square_char)
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
+            characters_images.append(square_char.astype(np.float32) / 255.0)
             # characters_images.append(square_char)
             
         

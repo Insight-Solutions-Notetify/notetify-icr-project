@@ -1,0 +1,67 @@
+<!-- <!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Success Page</title>
+
+    <style>
+
+        body {
+
+            font-family: Arial, sans-serif;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            height: 100vh;
+
+            margin: 0;
+
+            background-color: #f4f4f4;
+
+        }
+
+        .success-message {
+
+            text-align: center;
+
+            padding: 20px;
+
+            border: 2px solid #4caf50;
+
+            border-radius: 5px;
+
+            background-color: #dff0d8;
+
+            color: #3c763d;
+
+        }
+
+    </style>
+
+</head> -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+<body>
+
+    <div class="success-message text-black dark:text-white">
+
+        <h1>Success!</h1>
+
+        <p>{{ message }}</p>
+
+    </div>
+
+</body>
+{% endblock %}
