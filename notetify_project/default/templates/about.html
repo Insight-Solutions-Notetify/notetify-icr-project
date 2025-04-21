@@ -1,7 +1,67 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="bg-white-900 container mt-5 dark:bg-stone-900 mx-auto">
-        <h2 class="text-2xl font-semibold text-center text-gray-800 dark:text-gray-50">About Us</h2>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Styled Card</title>
+  <style>
+    html, body {
+    height: 100%;
+    margin: 0;
+    }
+.right-box {
+  position: absolute;
+  top: 200px; 
+  right: 20px;
+  width: 40%;          /* 50% of the parent/container width */
+  height: 50vh;
+}
+.left-box {
+  position: absolute;
+  top: 200px;
+  left: 70px;
+  width: 40%;           /* 50% of the parent/container width */
+  height: 50vh;
+}
+p.ex1 {
+  font-size: 50px;
+  font-family:'Courier New';
+  /* text-align: left; */
+}
+.paragraph-box {
+  position: absolute;
+  top: 400px;
+  left: 70px;
+  width: 40%;           /* 50% of the parent/container width */
+  height: 50vh;
+}
+p.ex2 {
+  font-size: 30px;
+  font-family:'Courier New';
+  /* text-align: left; */
+}
+
+  </style>
+</head>
+<body>
+      <div class="left-box ">
+      <p class="ex1"><b>About Us</p></b>
+    <p class="ex2">We are a team of 4 CSUF students whose original goal for this AI application was to help students easily translate their notes into text. 
+        We decided on this project because we know the trouble of transferring written text into online notes. However, with our project, we hope to help other students easily turn their 
+    written notes into text.</p>
     </div>
+        <div class="right-box ">
+            <p class="ex2">However, as this project has gotten bigger, we are looking to expand the range of use our AI has. Because our AI can transfer any written handwriting into text,
+                 it can be used in settings outside of school, such as offices, etc. 
+            </p>
+
+</div>
+
+        
+</body>
+</html>
 {% endblock %}
