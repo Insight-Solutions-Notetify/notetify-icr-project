@@ -164,3 +164,6 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 PRIVATE_MEDIA_ROOT = os.path.join(BASE_DIR, 'private_media')
 PRIVATE_MEDIA_URL = '/private_media/'
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'localhost'
+EMAIL_PORT = 1025

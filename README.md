@@ -53,3 +53,6 @@ To run training run
 ## DEBUG_MODE
 export DEBUG_MODE = True (Default False)
 $DEBUG_MODE (Check current value)
+
+# RUNNING LOCAL SMTP SERVER
+python -m aiosmtpd -n -l localhost:1025
